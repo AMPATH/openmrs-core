@@ -826,7 +826,7 @@ public class Context {
 		// correctly.
 		checkCoreDataset();
 
-		getContextDAO().setupSearchIndex();
+		// getContextDAO().setupSearchIndex();
 
 		// Loop over each module and startup each with these custom properties
 		ModuleUtil.startup(props);
