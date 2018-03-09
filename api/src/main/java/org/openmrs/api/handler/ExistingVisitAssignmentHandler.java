@@ -72,6 +72,10 @@ public class ExistingVisitAssignmentHandler extends BaseEncounterVisitHandler {
 				continue;
 			}
 			
+			if (visit.getStopDatetime() == null) {
+				continue;
+			}
+
 			//skip visits which ended before the encounter date
 			if (visit.getStopDatetime() != null && visit.getStopDatetime().before(encounterDate)) {
 				continue;

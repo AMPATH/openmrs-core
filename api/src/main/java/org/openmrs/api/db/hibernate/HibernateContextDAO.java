@@ -507,7 +507,10 @@ public class HibernateContextDAO implements ContextDAO {
 	public Future<?> updateSearchIndexAsync() {
 		try {
 			log.info("Started asynchronously updating the search index...");
-			return Search.getFullTextSession(sessionFactory.getCurrentSession()).createIndexer().start();
+			return Search.getFullTextSession(sessionFactory.getCurrentSession()).createIndexer().
+			typesToIndexInParallel(4).batchSizeToLoadObjects(25)
+					.cacheMode(CacheMode.NORMAL).threadsToLoadObjects(10).idFetchSize(150)
+			.start();
 		} catch (Exception e) {
 			throw new RuntimeException("Failed to start asynchronous search index update", e);
 		}
