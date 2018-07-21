@@ -78,4 +78,14 @@ public class OpenmrsProfileExcludeFilterTest extends BaseContextSensitiveTest {
 	public void shouldNotBeIgnoredIfOpenmrsVersionDoesMatch() {
 		assumeOpenmrsPlatformVersion("1.9");
 	}
+	
+	/**
+	 * @see OpenmrsProfileExcludeFilter#match(org.springframework.core.type.classreading.MetadataReader, org.springframework.core.type.classreading.MetadataReaderFactory)
+	 */
+	@Test
+	public void match_shouldIncludeBeanIfModuleMissing() {
+		OpenmrsProfileWithoutMissingModule bean = applicationContext.getBean(OpenmrsProfileWithoutMissingModule.class);
+		
+		assertThat(bean, is(notNullValue()));
+	}
 }

@@ -10,12 +10,12 @@
 package org.openmrs.validator;
 
 import org.apache.commons.collections.CollectionUtils;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.openmrs.Cohort;
 import org.openmrs.CohortMembership;
 import org.openmrs.Patient;
 import org.openmrs.annotation.Handler;
+import org.openmrs.api.context.Context;
+import org.openmrs.util.OpenmrsUtil;
 import org.springframework.validation.Errors;
 import org.springframework.validation.Validator;
 
@@ -28,12 +28,12 @@ import java.util.Collection;
 @Handler(supports = {Cohort.class}, order=50)
 public class CohortValidator implements Validator {
 
-	protected static final Log log = LogFactory.getLog(Cohort.class);
-
-	public boolean supports(Class c) {
+	@Override
+	public boolean supports(Class<?> c) {
 		return Cohort.class.isAssignableFrom(c);
 	}
 
+	@Override
 	public void validate(Object obj, Errors errors) {
 		if (obj == null || !(obj instanceof Cohort)) {
 			throw new IllegalArgumentException("The parameter obj should not be null and must be of type"
@@ -43,13 +43,21 @@ public class CohortValidator implements Validator {
 
 
 		Cohort cohort = (Cohort) obj;
-		Collection<CohortMembership> members = cohort.getMembers();
-		if (!CollectionUtils.isEmpty(members)) {
-			for (CohortMembership member : members) {
-				Patient p = member.getPatient();
-				if (p.getVoided() && !member.getVoided()) {
-					String eMessage = "Patient " + p.getPatientId() + " is voided, cannot add voided members to a cohort";
-					errors.rejectValue("members", "Cohort.patientAndMemberShouldBeVoided", eMessage);
+		if (!cohort.getVoided()) {
+			Collection<CohortMembership> members = cohort.getMemberships();
+			if (!CollectionUtils.isEmpty(members)) {
+				for (CohortMembership member : members) {
+					Patient p = Context.getPatientService().getPatient(member.getPatientId());
+					int dateCompare = OpenmrsUtil.compareWithNullAsLatest(member.getStartDate(), member.getEndDate());
+					if (p != null && p.getVoided() && !member.getVoided()) {
+						String message = "Patient " + p.getPatientId()
+								+ " is voided, cannot add voided members to a cohort";
+						errors.rejectValue("memberships", "Cohort.patientAndMemberShouldBeVoided", message);
+					}
+					if (dateCompare == 1) {
+						String message = "Start date is null or end date is before start date";
+						errors.rejectValue("memberships", "Cohort.startDateShouldNotBeNullOrBeforeEndDate", message);
+					}
 				}
 			}
 		}

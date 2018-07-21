@@ -12,7 +12,6 @@ package org.openmrs.api.cache;
 import net.sf.ehcache.Cache;
 import net.sf.ehcache.CacheManager;
 import net.sf.ehcache.config.CacheConfiguration;
-import net.sf.ehcache.config.Configuration;
 import org.springframework.cache.ehcache.EhCacheManagerFactoryBean;
 
 import java.util.List;
@@ -21,7 +20,7 @@ import java.util.Map;
 /**
  * This class creates cache configurations from apiCacheConfig.properties files in the classpath. This file should be
  * created in modules resource directory only. To configure cache in openmrs-core go to ehcache-api.xml.
- * If the configuration already exist it won't be overridden.
+ * If the configuration already exists it won't be overridden.
  * Example content for apiCacheConfig.properties:
  * userSearchLocales.maxElementsInMemory=500
  * userSearchLocales.eternal=false

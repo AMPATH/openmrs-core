@@ -25,7 +25,6 @@ import org.openmrs.util.HttpClient;
 import org.openmrs.util.OpenmrsConstants;
 import org.openmrs.util.PrivilegeConstants;
 import org.openmrs.validator.ValidateUtil;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.validation.Errors;
 
 /**
@@ -294,7 +293,7 @@ public interface AdministrationService extends OpenmrsService {
 	 * MessageSourceService) filtered by the allowed locales (as indicated by this
 	 * AdministrationService).
 	 * 
-	 * @return list of allowed presentation locales TODO change this return type to list?
+	 * @return list of allowed presentation locales
 	 * @should return at least one locale if no locales defined in database yet
 	 * @should not return more locales than message source service locales
 	 * @should return only country locale if both country locale and language locale are specified in allowed list
@@ -355,7 +354,7 @@ public interface AdministrationService extends OpenmrsService {
 	 * @return locales
 	 * @throws APIException
 	 * @since 1.8.4, 1.9.1, 1.10
-	 * @should include currently selected full locale and langugage
+	 * @should include currently selected full locale and language
 	 * @should include users proficient locales
 	 * @should exclude not allowed locales
 	 * @should cache results for a user

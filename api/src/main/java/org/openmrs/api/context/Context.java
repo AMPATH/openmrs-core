@@ -85,11 +85,11 @@ import org.springframework.aop.Advisor;
  * <br>
  * The Context is split into a {@link UserContext} and {@link ServiceContext}. The UserContext is
  * lightweight and there is an instance for every user logged into the system. The ServiceContext is
- * heavier and contains each service class. This is more static and there is only one ServiceContext
+ * heavier and it contains each service class. This is more static and there is only one ServiceContext
  * per OpenMRS instance. <br>
  * <br>
  * Both the {@link UserContext} and the {@link ServiceContext} should not be used directly. This
- * Context class has methods to pass through to the currently defined UserContext for the thread and
+ * context class has methods to pass through to the currently defined UserContext for the thread and
  * the currently defined ServiceContext. <br>
  * <br>
  * To use the OpenMRS api there are four things that have to be done:
@@ -221,7 +221,7 @@ public class Context {
 	 * same time.
 	 *
 	 * @return The current UserContext for this thread.
-	 * @should fail if session hasnt been opened
+	 * @should fail if session hasn't been opened
 	 */
 	public static UserContext getUserContext() {
 		Object[] arr = userContextHolder.get();
@@ -442,7 +442,7 @@ public class Context {
 	public static OrderSetService getOrderSetService() {
 		return getServiceContext().getOrderSetService();
 	}
-	
+
 	/**
 	 * @return form service
 	 */
@@ -602,7 +602,7 @@ public class Context {
 	 * logs out the "active" (authenticated) user within context
 	 *
 	 * @see #authenticate
-	 * @should not fail if session hasnt been opened yet
+	 * @should not fail if session hasn't been opened yet
 	 */
 	public static void logout() {
 		if (!isSessionOpen()) {
@@ -687,7 +687,7 @@ public class Context {
 	/**
 	 * Convenience method. Passes through to {@link UserContext#getLocale()}
 	 *
-	 * @should not fail if session hasnt been opened
+	 * @should not fail if session hasn't been opened
 	 */
 	public static Locale getLocale() {
 		// if a session hasn't been opened, just fetch the default
@@ -807,7 +807,7 @@ public class Context {
 	 * @see InputRequiredException#getRequiredInput() InputRequiredException#getRequiredInput() for
 	 *      the required question/datatypes
 	 */
-	public static void startup(Properties props) throws DatabaseUpdateException, InputRequiredException,
+	public synchronized static void startup(Properties props) throws DatabaseUpdateException, InputRequiredException,
 	        ModuleMustStartException {
 		// do any context database specific startup
 		getContextDAO().startup(props);
@@ -826,7 +826,7 @@ public class Context {
 		// correctly.
 		checkCoreDataset();
 
-		getContextDAO().setupSearchIndex();
+		// getContextDAO().setupSearchIndex();
 
 		// Loop over each module and startup each with these custom properties
 		ModuleUtil.startup(props);
@@ -851,7 +851,7 @@ public class Context {
 	 * @see InputRequiredException#getRequiredInput() InputRequiredException#getRequiredInput() for
 	 *      the required question/datatypes
 	 */
-	public static void startup(String url, String username, String password, Properties properties)
+	public synchronized static void startup(String url, String username, String password, Properties properties)
 	        throws DatabaseUpdateException, InputRequiredException, ModuleMustStartException {
 		if (properties == null) {
 			properties = new Properties();

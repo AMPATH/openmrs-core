@@ -12,8 +12,8 @@
 -->
 <web-app xmlns="http://java.sun.com/xml/ns/j2ee"
 	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://java.sun.com/xml/ns/j2ee http://java.sun.com/xml/ns/j2ee/web-app_2_4.xsd"
-	version="2.4">
+	xsi:schemaLocation="http://java.sun.com/xml/ns/j2ee http://java.sun.com/xml/ns/j2ee/web-app_3_0.xsd"
+	version="3.0">
 
 	<display-name>@WEBAPP.DISPLAY.NAME@</display-name>
 	<description>@WEBAPP.DESCRIPTION@</description> 
@@ -88,6 +88,21 @@
 		<listener-class>org.openmrs.web.Listener</listener-class>
 		<!--  extends ContextLoader -->
 	</listener>
+<!-- 
+	<listener>  
+       <listener-class>net.bull.javamelody.SessionListener</listener-class>  
+</listener> 
+
+	<filter>  
+       <filter-name>monitoring</filter-name>  
+       <filter-class>net.bull.javamelody.MonitoringFilter</filter-class>  
+</filter>  
+<filter-mapping>  
+       <filter-name>monitoring</filter-name>  
+       <url-pattern>/*</url-pattern>  
+</filter-mapping>   -->
+
+	
 	
 	<!--  This charsetFilter MUST BE THE FIRST FILTER so that all UTF-8 characters are caught -->
 	<filter>
@@ -306,5 +321,26 @@
 		<servlet-name>jsp</servlet-name>
 		<url-pattern>*.jsp</url-pattern>
 	</servlet-mapping>
+	
+	<session-config>
+	    <cookie-config>
+	        <http-only>true</http-only>
+	    </cookie-config>
+	</session-config>
+
+	<!-- Javamelody -->
+
+<filter>
+	<filter-name>javamelody</filter-name>
+	<filter-class>net.bull.javamelody.MonitoringFilter</filter-class>
+	<async-supported>true</async-supported>
+</filter>
+<filter-mapping>
+	<filter-name>javamelody</filter-name>
+	<url-pattern>/*</url-pattern>
+	<dispatcher>REQUEST</dispatcher>
+	<dispatcher>ASYNC</dispatcher>
+</filter-mapping>
+
 
 </web-app>

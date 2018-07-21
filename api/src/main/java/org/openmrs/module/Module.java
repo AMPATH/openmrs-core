@@ -561,6 +561,7 @@ public final class Module {
 			for (Map.Entry<String, String> entry : extensionNames.entrySet()) {
 				String point = entry.getKey();
 				String className = entry.getValue();
+				final String errorLoadClassString = "Unable to load class for extension: ";
 				log.debug("expanding extension names: " + point + " : " + className);
 				try {
 					Class<?> cls = moduleClsLoader.loadClass(className);
@@ -574,13 +575,13 @@ public final class Module {
 					log.warn(getModuleId() + ": Unable to find class definition for extension: " + point, e);
 				}
 				catch (ClassNotFoundException e) {
-					log.warn("Unable to load class for extension: " + point, e);
+					log.warn(errorLoadClassString + point, e);
 				}
 				catch (IllegalAccessException e) {
-					log.warn("Unable to load class for extension: " + point, e);
+					log.warn(errorLoadClassString + point, e);
 				}
 				catch (InstantiationException e) {
-					log.warn("Unable to load class for extension: " + point, e);
+					log.warn(errorLoadClassString + point, e);
 				}
 			}
 		}
@@ -688,7 +689,7 @@ public final class Module {
 	 * @since 1.9.2, 1.10
 	 */
 	public void setPackagesWithMappedClasses(Set<String> packagesToScan) {
-		this.packagesWithMappedClasses = new HashSet<String>(packagesToScan);
+		this.packagesWithMappedClasses = packagesToScan;
 	}
 	
 	/**
@@ -750,7 +751,7 @@ public final class Module {
 			throw new ModuleException("Startup error value cannot be null", this.getModuleId());
 		}
 		
-		StringBuffer sb = new StringBuffer();
+		StringBuilder sb = new StringBuilder();
 		
 		// if exceptionMessage is not null, append it
 		if (exceptionMessage != null) {

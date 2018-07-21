@@ -257,7 +257,7 @@ public class PatientServiceImpl extends BaseOpenmrsService implements PatientSer
 	@Transactional(readOnly = true)
 	public void checkPatientIdentifiers(Patient patient) throws PatientIdentifierException {
 		// check patient has at least one identifier
-		if (!patient.isVoided() && patient.getActiveIdentifiers().size() < 1) {
+		if (!patient.isVoided() && patient.getActiveIdentifiers().isEmpty()) {
 			throw new InsufficientIdentifiersException("At least one nonvoided Patient Identifier is required");
 		}
 		
@@ -293,11 +293,6 @@ public class PatientServiceImpl extends BaseOpenmrsService implements PatientSer
 				}
 			}
 			
-			// TODO: check patient has at least one "sufficient" identifier
-			// TODO: what makes a patient identifier unique ... can you have the
-			// 		 same identifier number at different locations?  if so, then this
-			// 		 check duplicate algorithm does not handle this case
-			
 			// check this patient for duplicate identifiers+identifierType
 			if (identifiersUsed.contains(pi.getIdentifier() + " id type #: "
 			        + pi.getIdentifierType().getPatientIdentifierTypeId())) {
@@ -309,7 +304,7 @@ public class PatientServiceImpl extends BaseOpenmrsService implements PatientSer
 			}
 		}
 		
-		if (requiredTypes.size() > 0) {
+		if (!requiredTypes.isEmpty()) {
 			String missingNames = "";
 			for (PatientIdentifierType pit : requiredTypes) {
 				missingNames += (missingNames.length() > 0) ? ", " + pit.getName() : pit.getName();
@@ -382,7 +377,6 @@ public class PatientServiceImpl extends BaseOpenmrsService implements PatientSer
 	// patient identifier _type_ section
 	
 	/**
-	 * TODO: Add changedBy and DateChanged columns to table patient_identifier_type
 	 * 
 	 * @see org.openmrs.api.PatientService#savePatientIdentifierType(org.openmrs.PatientIdentifierType)
 	 */
@@ -432,7 +426,7 @@ public class PatientServiceImpl extends BaseOpenmrsService implements PatientSer
 	public PatientIdentifierType getPatientIdentifierTypeByName(String name) throws APIException {
 		List<PatientIdentifierType> types = getPatientIdentifierTypes(name, null, null, null);
 		
-		if (types.size() > 0) {
+		if (!types.isEmpty()) {
 			return types.get(0);
 		}
 		
@@ -510,7 +504,7 @@ public class PatientServiceImpl extends BaseOpenmrsService implements PatientSer
 	@Transactional(readOnly = true)
 	public List<Patient> getDuplicatePatientsByAttributes(List<String> attributes) throws APIException {
 		
-		if (attributes == null || attributes.size() < 1) {
+		if (attributes == null || attributes.isEmpty()) {
 			throw new APIException("Patient.no.attribute", (Object[]) null);
 		}
 		
@@ -530,7 +524,7 @@ public class PatientServiceImpl extends BaseOpenmrsService implements PatientSer
 		return rel.getRelationshipType().getRelationshipTypeId().toString() + (isA ? "A" : "B")
 		        + (isA ? rel.getPersonB().getPersonId().toString() : rel.getPersonA().getPersonId().toString());
 	}
-	
+
 	/**
 	 * 1) Moves object (encounters/obs) pointing to <code>nonPreferred</code> to
 	 * <code>preferred</code> 2) Copies data (gender/birthdate/names/ids/etc) from
@@ -549,12 +543,7 @@ public class PatientServiceImpl extends BaseOpenmrsService implements PatientSer
 			log.debug("Merge operation cancelled: Cannot merge user" + preferred.getPatientId() + " to self");
 			throw new APIException("Patient.merge.cancelled", new Object[] { preferred.getPatientId() });
 		}
-		List<Order> orders = Context.getOrderService().getAllOrdersByPatient(notPreferred);
-		for (Order order : orders) {
-			if (!order.isVoided()) {
-				throw new APIException("Patient.cannot.merge", (Object[]) null);
-			}
-		}
+		requireNoActiveOrderOfSameType(preferred,notPreferred);
 		PersonMergeLogData mergedData = new PersonMergeLogData();
 		mergeVisits(preferred, notPreferred, mergedData);
 		mergeEncounters(preferred, notPreferred, mergedData);
@@ -593,6 +582,23 @@ public class PatientServiceImpl extends BaseOpenmrsService implements PatientSer
 		Context.getPersonService().savePersonMergeLog(personMergeLog);
 	}
 	
+	private void requireNoActiveOrderOfSameType(Patient patient1, Patient patient2) {
+		String messageKey = "Patient.merge.cannotHaveSameTypeActiveOrders";
+		List<Order> ordersByPatient1 = Context.getOrderService().getAllOrdersByPatient(patient1);
+		List<Order> ordersByPatient2 = Context.getOrderService().getAllOrdersByPatient(patient2);
+		ordersByPatient1.forEach((Order order1) -> {
+			ordersByPatient2.forEach((Order order2) -> {
+				if (order1.isActive() && order2.isActive() && order1.getOrderType().equals(order2.getOrderType())) {
+					Object[] parameters = { patient1.getPatientId(), patient2.getPatientId(), order1.getOrderType() };
+					String message = Context.getMessageSourceService().getMessage(messageKey, parameters,
+							Context.getLocale());
+					log.debug(message);
+					throw new APIException(message);
+				}
+			});
+		});
+	}
+
 	private void mergeProgramEnrolments(Patient preferred, Patient notPreferred, PersonMergeLogData mergedData) {
 		// copy all program enrollments
 		ProgramWorkflowService programService = Context.getProgramWorkflowService();
@@ -1044,7 +1050,6 @@ public class PatientServiceImpl extends BaseOpenmrsService implements PatientSer
 	 * @throws APIException
 	 */
 	public void processDeath(Patient patient, Date dateDied, Concept causeOfDeath, String otherReason) throws APIException {
-		//SQLStateConverter s = null;
 		
 		if (patient != null && dateDied != null && causeOfDeath != null) {
 			// set appropriate patient characteristics
@@ -1281,7 +1286,7 @@ public class PatientServiceImpl extends BaseOpenmrsService implements PatientSer
 		}
 		
 		try {
-			return getIdentifierValidator(((Class<IdentifierValidator>) Context.loadClass(pivClassName)));
+			return getIdentifierValidator((Class<IdentifierValidator>) Context.loadClass(pivClassName));
 		}
 		catch (ClassNotFoundException e) {
 			log.error("Could not find patient identifier validator " + pivClassName, e);
@@ -1377,7 +1382,7 @@ public class PatientServiceImpl extends BaseOpenmrsService implements PatientSer
 		
 		Allergies allergies = new Allergies();
 		List<Allergy> allergyList = dao.getAllergies(patient);
-		if (allergyList.size() > 0) {
+		if (!allergyList.isEmpty()) {
 			allergies.addAll(allergyList);
 		} else {
 			String status = dao.getAllergyStatus(patient);
@@ -1583,7 +1588,7 @@ public class PatientServiceImpl extends BaseOpenmrsService implements PatientSer
 	public void checkIfPatientIdentifierTypesAreLocked() {
 		String locked = Context.getAdministrationService().getGlobalProperty(
 		    OpenmrsConstants.GLOBAL_PROPERTY_PATIENT_IDENTIFIER_TYPES_LOCKED, "false");
-		if ("true".equals(locked.toLowerCase())) {
+		if ("true".equalsIgnoreCase(locked)) {
 			throw new PatientIdentifierTypeLockedException();
 		}
 	}

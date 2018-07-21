@@ -342,7 +342,7 @@ public class FormServiceImpl extends BaseOpenmrsService implements FormService {
 	@Transactional(readOnly = true)
 	public Form getForm(String name) throws APIException {
 		List<Form> forms = dao.getFormsByName(name);
-		if (forms == null || forms.size() == 0) {
+		if (forms == null || forms.isEmpty()) {
 			return null;
 		} else {
 			return forms.get(0);
@@ -784,7 +784,7 @@ public class FormServiceImpl extends BaseOpenmrsService implements FormService {
 	public void checkIfFormsAreLocked() {
 		String locked = Context.getAdministrationService().getGlobalProperty(OpenmrsConstants.GLOBAL_PROPERTY_FORMS_LOCKED,
 		    "false");
-		if ("true".equals(locked.toLowerCase())) {
+		if (Boolean.valueOf(locked)) {
 			throw new FormsLockedException();
 		}
 	}

@@ -13,7 +13,7 @@
    <parent>
       <groupId>org.openmrs</groupId>
       <artifactId>openmrs</artifactId>
-      <version>2.1.0-SNAPSHOT</version>
+      <version>2.1.2</version>
    </parent>
    <modelVersion>4.0.0</modelVersion>
    <groupId>org.openmrs.api</groupId>
@@ -227,6 +227,11 @@
 		   <groupId>net.sf.ehcache</groupId>
 		   <artifactId>ehcache</artifactId>
        </dependency>
+       <dependency>
+	<groupId>net.bull.javamelody</groupId>
+	<artifactId>javamelody-core</artifactId>
+	<version>1.71.0</version>
+</dependency>
    </dependencies>
    <build>
      <resources>

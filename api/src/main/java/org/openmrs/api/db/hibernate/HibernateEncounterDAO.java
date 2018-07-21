@@ -135,21 +135,21 @@ public class HibernateEncounterDAO implements EncounterDAO {
 					)
 			);
 		}
-		if (searchCriteria.getEnteredViaForms() != null && searchCriteria.getEnteredViaForms().size() > 0) {
+		if (searchCriteria.getEnteredViaForms() != null && !searchCriteria.getEnteredViaForms().isEmpty()) {
 			crit.add(Restrictions.in("form", searchCriteria.getEnteredViaForms()));
 		}
-		if (searchCriteria.getEncounterTypes() != null && searchCriteria.getEncounterTypes().size() > 0) {
+		if (searchCriteria.getEncounterTypes() != null && !searchCriteria.getEncounterTypes().isEmpty()) {
 			crit.add(Restrictions.in("encounterType", searchCriteria.getEncounterTypes()));
 		}
-		if (searchCriteria.getProviders() != null && searchCriteria.getProviders().size() > 0) {
+		if (searchCriteria.getProviders() != null && !searchCriteria.getProviders().isEmpty()) {
 			crit.createAlias("encounterProviders", "ep");
 			crit.add(Restrictions.in("ep.provider", searchCriteria.getProviders()));
 		}
-		if (searchCriteria.getVisitTypes() != null && searchCriteria.getVisitTypes().size() > 0) {
+		if (searchCriteria.getVisitTypes() != null && !searchCriteria.getVisitTypes().isEmpty()) {
 			crit.createAlias("visit", "v");
 			crit.add(Restrictions.in("v.visitType", searchCriteria.getVisitTypes()));
 		}
-		if (searchCriteria.getVisits() != null && searchCriteria.getVisits().size() > 0) {
+		if (searchCriteria.getVisits() != null && !searchCriteria.getVisits().isEmpty()) {
 			crit.add(Restrictions.in("visit", searchCriteria.getVisits()));
 		}
 		if (!searchCriteria.getIncludeVoided()) {
@@ -336,7 +336,7 @@ public class HibernateEncounterDAO implements EncounterDAO {
 		// only include this where clause if patients were passed in
 		if (patients != null) {
             ArrayList<Integer> patientIds = new ArrayList<Integer>();
-			patients.getMembers().forEach(m -> patientIds.add(m.getPatient().getPatientId()));
+			patients.getMemberships().forEach(m -> patientIds.add(m.getPatientId()));
 			criteria.add(Restrictions.in("patient.personId", patientIds));
 		}
 		

@@ -271,7 +271,7 @@ public class ProgramWorkflowServiceImpl extends BaseOpenmrsService implements Pr
 	 */
 	@Transactional(readOnly = true)
 	public List<PatientProgram> getPatientPrograms(Cohort cohort, Collection<Program> programs) {
-		if (cohort.getMemberIds().size() < 1) {
+		if (cohort.getMemberIds().isEmpty()) {
 			return dao.getPatientPrograms(null, programs);
 		} else {
 			return dao.getPatientPrograms(cohort, programs);
@@ -511,6 +511,15 @@ public class ProgramWorkflowServiceImpl extends BaseOpenmrsService implements Pr
 	}
 	
 	/**
+	 * @see org.openmrs.api.ProgramWorkflowService#getWorkflow(Integer)
+	 */
+	@Override
+	@Transactional(readOnly = true)
+	public ProgramWorkflowState getState(Integer stateId) {
+		return dao.getState(stateId);
+	}
+	
+	/**
 	 * @see org.openmrs.api.ProgramWorkflowService#getStateByUuid(java.lang.String)
 	 */
 	@Transactional(readOnly = true)
@@ -521,6 +530,15 @@ public class ProgramWorkflowServiceImpl extends BaseOpenmrsService implements Pr
 	@Transactional(readOnly = true)
 	public PatientState getPatientStateByUuid(String uuid) {
 		return dao.getPatientStateByUuid(uuid);
+	}
+	
+	/**
+	 * @see org.openmrs.api.ProgramWorkflowService#getWorkflow(Integer)
+	 */
+	@Override
+	@Transactional(readOnly = true)
+	public ProgramWorkflow getWorkflow(Integer workflowId) {
+		return dao.getWorkflow(workflowId);
 	}
 	
 	/**

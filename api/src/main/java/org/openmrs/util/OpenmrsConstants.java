@@ -581,7 +581,7 @@ public final class OpenmrsConstants {
 	 * 
 	 * @since 1.11
 	 */
-	public static final Integer SEARCH_INDEX_VERSION = 3;
+	public static final Integer SEARCH_INDEX_VERSION = 7;
 
 	/**
 	 * @since 1.12
@@ -969,7 +969,7 @@ public final class OpenmrsConstants {
 		props
 		        .add(new GlobalProperty(
 		                GP_CASE_SENSITIVE_DATABASE_STRING_COMPARISON,
-		                "true",
+		                "false",
 		                "Indicates whether database string comparison is case sensitive or not. Setting this to false for MySQL with a case insensitive collation improves search performance."));
 		props
 		        .add(new GlobalProperty(

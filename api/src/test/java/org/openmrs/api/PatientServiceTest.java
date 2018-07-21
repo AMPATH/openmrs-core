@@ -33,8 +33,10 @@ import java.util.GregorianCalendar;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.Vector;
+import java.util.stream.Collectors;
 
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.logging.Log;
@@ -55,6 +57,7 @@ import org.openmrs.GlobalProperty;
 import org.openmrs.Location;
 import org.openmrs.Obs;
 import org.openmrs.Order;
+import org.openmrs.OrderType;
 import org.openmrs.Patient;
 import org.openmrs.PatientIdentifier;
 import org.openmrs.PatientIdentifierType;
@@ -111,6 +114,8 @@ public class PatientServiceTest extends BaseContextSensitiveTest {
 	
 	private static final String PATIENT_MERGE_XML = "org/openmrs/api/include/PatientServiceTest-mergePatients.xml";
 	
+	private static final String PATIENT_MERGE_OBS_WITH_GROUP_MEMBER = "org/openmrs/api/include/PatientServiceTest-mergePatientWithExistingObsHavingGroupMember.xml";
+	
 	// Services
 	protected static PatientService patientService = null;
 	
@@ -135,6 +140,8 @@ public class PatientServiceTest extends BaseContextSensitiveTest {
 		personService = Context.getPersonService();
 		adminService = Context.getAdministrationService();
 		locationService = Context.getLocationService();
+
+		updateSearchIndex();
 	}
 	
 	private void voidOrders(Collection<Patient> patientsWithOrders) {
@@ -146,7 +153,26 @@ public class PatientServiceTest extends BaseContextSensitiveTest {
 			}
 		}
 	}
-	
+
+	private void voidOrdersForType(Collection<Patient> patients, OrderType ot) {
+		patients.forEach(patient -> {
+			Context.getOrderService().getAllOrdersByPatient(patient).forEach(order -> {
+				if(order.getOrderType().equals(ot)){
+					order.setVoided(true);
+				}
+			});
+		});
+	}
+
+	private boolean hasActiveOrderOfType(Patient patient, String orderTypeName) {
+		OrderType drugOrder = Context.getOrderService().getOrderTypeByName(orderTypeName);
+		List<Order> preferredPatientOrders = Context.getOrderService().getAllOrdersByPatient(patient).stream()
+				.filter(Order::isActive)
+				.filter(order -> Objects.equals(drugOrder, order.getOrderType()))
+				.collect(Collectors.toList());
+		return !preferredPatientOrders.isEmpty();
+	}
+
 	/**
 	 * @see PatientService#getAllIdentifierValidators()
 	 */
@@ -195,10 +221,10 @@ public class PatientServiceTest extends BaseContextSensitiveTest {
 		patient.addAddress(pAddress);
 		// patient.removeAddress(pAddress);
 		
-		patient.setDeathDate(new Date());
-		// patient.setCauseOfDeath("air");
 		patient.setBirthdate(new Date());
 		patient.setBirthdateEstimated(true);
+		patient.setDeathDate(new Date());
+		patient.setCauseOfDeath(new Concept());
 		patient.setGender("male");
 		patient.setDeathdateEstimated(true);
 		
@@ -233,11 +259,11 @@ public class PatientServiceTest extends BaseContextSensitiveTest {
 		patient.addAddress(pAddress);
 		// patient.removeAddress(pAddress);
 		
-		patient.setDeathDate(new Date());
 		patient.setBirthdateEstimated(true);
-		// patient.setCauseOfDeath("air");
 		patient.setBirthdate(new Date());
 		patient.setBirthdateEstimated(true);
+		patient.setDeathDate(new Date());
+		patient.setCauseOfDeath(new Concept());
 		patient.setGender("male");
 		
 		List<PatientIdentifierType> patientIdTypes = patientService.getAllPatientIdentifierTypes();
@@ -342,6 +368,7 @@ public class PatientServiceTest extends BaseContextSensitiveTest {
 	public void shouldGetPatientsByIdentifier() throws Exception {
 		
 		executeDataSet(CREATE_PATIENT_XML);
+		updateSearchIndex();
 		
 		// get the first patient
 		Collection<Patient> johnPatients = patientService.getPatients("John", null, null, false);
@@ -389,6 +416,7 @@ public class PatientServiceTest extends BaseContextSensitiveTest {
 	@Test
 	public void shouldGetPatientsByNameShouldLimitSize() throws Exception {
 		executeDataSet(JOHN_PATIENTS_XML);
+		updateSearchIndex();
 		
 		Collection<Patient> patients = patientService.getPatients("John", null, null, false);
 		
@@ -439,6 +467,7 @@ public class PatientServiceTest extends BaseContextSensitiveTest {
 		initializeInMemoryDatabase();
 		executeDataSet(FIND_PATIENTS_XML);
 		authenticate();
+		updateSearchIndex();
 		
 		List<PatientIdentifierType> types = new Vector<PatientIdentifierType>();
 		types.add(new PatientIdentifierType(1));
@@ -560,6 +589,7 @@ public class PatientServiceTest extends BaseContextSensitiveTest {
 	public void getPatients_shouldAllowSearchStringToBeOneAccordingToMinsearchcharactersGlobalProperty() throws Exception {
 		initializeInMemoryDatabase();
 		executeDataSet(FIND_PATIENTS_XML);
+		updateSearchIndex();
 		
 		// make sure the default of "2" kicks in and blocks any results
 		assertEquals(0, Context.getPatientService().getPatients("J").size());
@@ -732,6 +762,7 @@ public class PatientServiceTest extends BaseContextSensitiveTest {
 	@Verifies(value = "should search familyName2 with name", method = "getPatients(String,String,List<QPatientIdentifierType;>,null)")
 	public void getPatients_shouldSearchFamilyName2WithName() throws Exception {
 		executeDataSet("org/openmrs/api/include/PersonServiceTest-extranames.xml");
+		updateSearchIndex();
 		
 		List<Patient> patients = patientService.getPatients("Johnson", null, null, false);
 		Assert.assertEquals(3, patients.size());
@@ -1845,6 +1876,9 @@ public class PatientServiceTest extends BaseContextSensitiveTest {
 		Patient patient = Context.getPatientService().getPatient(2);
 		patient.addIdentifier(identifier);
 		Context.getPatientService().savePatient(patient);
+
+		updateSearchIndex();
+
 		assertEquals(1, Context.getPatientService().getPatients("1234-4").size());
 	}
 	
@@ -1950,6 +1984,7 @@ public class PatientServiceTest extends BaseContextSensitiveTest {
 		initializeInMemoryDatabase();
 		executeDataSet(FIND_PATIENTS_XML);
 		authenticate();
+		updateSearchIndex();
 		
 		List<Patient> patients = patientService.getPatients("Jea", null, null, false);
 		// patients with patientId of 4, 5, & 6 contain "Jea" at the start of a
@@ -2042,6 +2077,9 @@ public class PatientServiceTest extends BaseContextSensitiveTest {
 		Patient patient = Context.getPatientService().getPatient(2);
 		patient.addIdentifier(identifier);
 		Context.getPatientService().savePatient(patient);
+
+		updateSearchIndex();
+
 		assertEquals(1, Context.getPatientService().getPatients("12344").size());
 		assertEquals(1, Context.getPatientService().getPatients("1234-4").size());
 	}
@@ -2671,6 +2709,7 @@ public class PatientServiceTest extends BaseContextSensitiveTest {
 		Patient preferred = patientService.getPatient(999);
 		preferred.setDeathDate(cDate.getTime());
 		preferred.setDeathdateEstimated(true);
+		preferred.setCauseOfDeath(Context.getConceptService().getConcept(3));
 		preferred.addName(new PersonName("givenName", "middleName", "familyName"));
 		patientService.savePatient(preferred);
 		Patient notPreferred = patientService.getPatient(7);
@@ -3203,7 +3242,9 @@ public class PatientServiceTest extends BaseContextSensitiveTest {
 		        locationService.getLocation(1));
 		patient.addIdentifier(pId);
 		patientService.savePatient(patient);
-		
+
+		updateSearchIndex();
+
 		Assert.assertEquals(1, patientService.getPatients(identifier).size());
 	}
 	
@@ -3220,6 +3261,8 @@ public class PatientServiceTest extends BaseContextSensitiveTest {
 		        locationService.getLocation(1));
 		patient.addIdentifier(pId);
 		patientService.savePatient(patient);
+
+		updateSearchIndex();
 		
 		Assert.assertEquals(1, patientService.getCountOfPatients(identifier).intValue());
 	}
@@ -3303,15 +3346,63 @@ public class PatientServiceTest extends BaseContextSensitiveTest {
 	}
 	
 	/**
-	 * @verifies fail if not preferred patient has unvoided orders
+	 * @verifies fail if multiple patients have active order of same type
+	 * @see PatientService#mergePatients(org.openmrs.Patient, org.openmrs.Patient)
+	 * @throws APIException
+	 */
+	@Test
+	public void mergePatients_shouldFailIfMultiplePatientsHaveActiveOrderOfSameType() throws Exception {
+		expectedException.expect(APIException.class);
+		String message = Context.getMessageSourceService().getMessage("Patient.merge.cannotHaveSameTypeActiveOrders",
+				new Object[] { "2", "7", "Drug order" }, Context.getLocale());
+		expectedException.expectMessage(Matchers.is(message));
+		Patient preferredPatient = patientService.getPatient(2);
+		Patient notPreferredPatient = patientService.getPatient(7);
+		
+		assertTrue("Test pre-request: No Active Drug order in " + preferredPatient,
+				hasActiveOrderOfType(preferredPatient, "Drug order"));
+		assertTrue("Test pre-request: No Active Drug order in " + notPreferredPatient,
+				hasActiveOrderOfType(preferredPatient, "Drug order"));
+		patientService.mergePatients(preferredPatient, notPreferredPatient);
+	}
+
+	/**
+	 * @verifies not fail if one patient has active order
 	 * @see PatientService#mergePatients(org.openmrs.Patient, org.openmrs.Patient)
 	 */
 	@Test
-	public void mergePatients_shouldFailIfNotPreferredPatientHasUnvoidedOrders() throws Exception {
-		expectedException.expect(APIException.class);
-		expectedException.expectMessage(Matchers.is(Context.getMessageSourceService().getMessage("Patient.cannot.merge")));
-		Patient preferredPatient = patientService.getPatient(8);
+	public void mergePatients_shouldNotFailIfOnePatientHasActiveOrder() throws Exception {
+		Patient preferredPatient = patientService.getPatient(2);
 		Patient notPreferredPatient = patientService.getPatient(7);
+		voidOrders(Collections.singleton(notPreferredPatient));
+		
+		assertTrue("Test pre-request: No Active Drug order in " + preferredPatient,
+				hasActiveOrderOfType(preferredPatient, "Drug order"));
+		assertFalse("Test pre-request: At least one Active Drug order in " + notPreferredPatient,
+				hasActiveOrderOfType(notPreferredPatient, "Drug order"));
+		patientService.mergePatients(preferredPatient, notPreferredPatient);
+	}
+
+	/**
+	 * @verifies not fail if multiple patients have active order of different types
+	 * @see PatientService#mergePatients(org.openmrs.Patient, org.openmrs.Patient)
+	 */
+	@Test
+	public void mergePatients_shouldNotFailIfMultiplePatientsHaveActiveOrderOfDifferentTypes() throws Exception {
+		Patient preferredPatient = patientService.getPatient(2);
+		Patient notPreferredPatient = patientService.getPatient(7);
+		OrderType DrugOrder = Context.getOrderService().getOrderTypeByName("Drug order");
+		voidOrdersForType(Collections.singleton(preferredPatient), DrugOrder);
+		
+		assertFalse("Test pre-request: No Active Drug order in " + preferredPatient,
+				hasActiveOrderOfType(preferredPatient, "Drug order"));
+		assertTrue("Test pre-request: At least one Active Test order in " + preferredPatient,
+				hasActiveOrderOfType(preferredPatient, "Test order"));
+		
+		assertTrue("Test pre-request: At least one Active Drug order in " + notPreferredPatient,
+				hasActiveOrderOfType(notPreferredPatient, "Drug order"));
+		assertFalse("Test pre-request: No Active Test order in " + notPreferredPatient,
+				hasActiveOrderOfType(notPreferredPatient, "Test order"));
 		patientService.mergePatients(preferredPatient, notPreferredPatient);
 	}
 
@@ -3319,5 +3410,32 @@ public class PatientServiceTest extends BaseContextSensitiveTest {
 	@Test(expected = APIException.class)
 	public void processDeath_shouldThrowAPIExceptionIfPatientIsNull() throws Exception{
 		patientService.processDeath(null, new Date(), new Concept(), "unknown");
+	}
+	
+	/**
+	 * @verifies move all the obs with same hierarchy for the patient after merge.
+	 * @see PatientService#mergePatients(org.openmrs.Patient, org.openmrs.Patient)
+	 */
+	@Test
+	public void mergePatients_shouldMoveAllObsWithSameHierarchy() throws Exception {
+		executeDataSet(PATIENT_MERGE_OBS_WITH_GROUP_MEMBER);
+
+		Patient notPreffered = patientService.getPatient(11);
+		Patient preffered = patientService.getPatient(21);
+
+		EncounterService encounterService = Context.getEncounterService();
+
+		assertEquals(57, encounterService.getEncountersByPatient(notPreffered).get(0).getId().intValue());
+		assertEquals(3, encounterService.getEncounter(57).getAllObs(false).size());
+		assertEquals(4, encounterService.getEncounter(57).getAllObs(true).size());
+		assertEquals(1, encounterService.getEncounter(57).getObsAtTopLevel(false).size());
+		assertEquals(1, encounterService.getEncounter(57).getObsAtTopLevel(true).size());
+
+		patientService.mergePatients(preffered, notPreffered);
+
+		assertEquals(3, encounterService.getEncounter(57).getAllObs(false).size());
+		assertEquals(8, encounterService.getEncounter(57).getAllObs(true).size());
+		assertEquals(1, encounterService.getEncounter(57).getObsAtTopLevel(false).size());
+		assertEquals(2, encounterService.getEncounter(57).getObsAtTopLevel(true).size());
 	}
 }
