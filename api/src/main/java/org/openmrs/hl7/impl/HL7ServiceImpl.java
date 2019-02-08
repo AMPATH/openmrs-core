@@ -393,6 +393,18 @@ public class HL7ServiceImpl extends BaseOpenmrsService implements HL7Service {
 		return dao.getHL7InErrorByUuid(uuid);
 	}
 	
+	/** Gets the error message for failing to resolve a user with a certain id, family, and given name.
+ 	 * @param idNum id number
+ 	 * @param fName family name
+ 	 * @param gName given name
+ 	 * @return error string. User can not be resolveUserId
+ 	 */
+ 	private String getFindingUserErrorMessage(String idNum, String fName, String gName) {
+ 		String cantFindUser = "Error resolving user with id '" + idNum + "' family name '" + fName
+ 				  + "' and given name '" + gName + "'";
+ 		return cantFindUser;
+ 	}
+	
 	/**
 	 * @param xcn HL7 component of data type XCN (extended composite ID number and name for persons)
 	 *            (see HL7 2.5 manual Ch.2A.86)
@@ -429,24 +441,37 @@ public class HL7ServiceImpl extends BaseOpenmrsService implements HL7Service {
 			// log.debug("searching for user by name");
 			try {
 				List<User> users = Context.getUserService().getUsersByName(givenName,familyName,true);
-				if( users == null) {
-					log.error("Error resolving user with id '" + idNumber + "' family name '" + familyName
-							  + "' and given name '" + givenName + "': User not found");
-					return null;
-				}
-				else if( users.size() == 1){
+				if (users.size() == 1) {
 					return users.get(0).getUserId();
 				}
-				else{
+				else if (users.size() > 1) {
 					//Return null if that user ambiguous
-					log.error("Error resolving user with id '" + idNumber + "' family name '" + familyName
-							  + "' and given name '" + givenName + "': Found " + users.size() + " ambiguous users.");
+					log.error(getFindingUserErrorMessage(idNumber, familyName, givenName) + ": Found " + users.size() + " ambiguous users.");
 					return null;
+				}
+				else { // size == 0
+					// legacy behavior is looking up by username
+					StringBuilder username = new StringBuilder();
+					if (familyName != null) {
+						username.append(familyName);
+					}
+					if (givenName != null) {
+						if (username.length() > 0) {
+							username.append(" "); // separate names with a space
+						}
+						username.append(givenName);
+					}
+					User user = Context.getUserService().getUserByUsername(username.toString());
+					
+					if (user == null) {
+						log.error(getFindingUserErrorMessage(idNumber, familyName, givenName) + ": User not found");
+						return null;
+					}
+					return user.getUserId();
 				}
 			}
 			catch (Exception e) {
-				log.error("Error resolving user with id '" + idNumber + "' family name '" + familyName
-				        + "' and given name '" + givenName + "'", e);
+				log.error(getFindingUserErrorMessage(idNumber, familyName, givenName), e);
 				return null;
 			}
 		}
@@ -474,7 +499,7 @@ public class HL7ServiceImpl extends BaseOpenmrsService implements HL7Service {
 			List<Person> persons = Context.getPersonService().getPeople(givenName + " " + familyName, null);
 			if (persons.size() == 1) {
 				return persons.get(0).getPersonId();
-			} else if (persons.size() == 0) {
+			} else if (persons.isEmpty()) {
 				log.error("Couldn't find a person named " + givenName + " " + familyName);
 				return null;
 			} else {
@@ -617,7 +642,7 @@ public class HL7ServiceImpl extends BaseOpenmrsService implements HL7Service {
 					}
 					List<PatientIdentifier> matchingIds = Context.getPatientService().getPatientIdentifiers(hl7PersonId,
 					    Collections.singletonList(pit), null, null, null);
-					if (matchingIds == null || matchingIds.size() < 1) {
+					if (matchingIds == null || matchingIds.isEmpty()) {
 						// no matches
 						log.warn("NO matches found for " + hl7PersonId);
 						continue; // try next identifier
@@ -1022,7 +1047,7 @@ public class HL7ServiceImpl extends BaseOpenmrsService implements HL7Service {
 		
 		// while we still we have any archives to be processed, process them
 		while (Hl7InArchivesMigrateThread.isActive() && Hl7InArchivesMigrateThread.getTransferStatus() == Status.RUNNING
-		        && hl7InArchives != null && hl7InArchives.size() > 0) {
+		        && hl7InArchives != null && !hl7InArchives.isEmpty()) {
 			
 			Iterator<HL7InArchive> iterator = hl7InArchives.iterator();
 			

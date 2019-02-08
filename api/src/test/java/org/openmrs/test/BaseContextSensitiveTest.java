@@ -74,6 +74,11 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.openmrs.ConceptName;
 import org.openmrs.Drug;
+import org.openmrs.Patient;
+import org.openmrs.PatientIdentifier;
+import org.openmrs.Person;
+import org.openmrs.PersonAttribute;
+import org.openmrs.PersonName;
 import org.openmrs.User;
 import org.openmrs.annotation.OpenmrsProfileExcludeFilter;
 import org.openmrs.api.context.Context;
@@ -569,19 +574,23 @@ public abstract class BaseContextSensitiveTest extends AbstractJUnit4SpringConte
 		if (!useInMemoryDatabase())
 			throw new Exception(
 			        "You shouldn't be initializing a NON in-memory database. Consider unoverriding useInMemoryDatabase");
+
+		setAutoIncrementOnTablesWithNativeIfNotAssignedIdentityGenerator();
+		executeDataSet(INITIAL_XML_DATASET_PACKAGE_PATH);
+	}
+
+	public void setAutoIncrementOnTablesWithNativeIfNotAssignedIdentityGenerator() throws Exception {
 		/*
-		 * Hbm2ddl used in tests creates primary key columns, which are not auto incremented, if
+		 * Hbm2ddl used in tests creates primary key columns, which are not auto incremented if
 		 * NativeIfNotAssignedIdentityGenerator is used. We need to alter those columns in tests.
 		 */
 		List<String> tables = Arrays.asList("concept");
 		for (String table : tables) {
 			getConnection().prepareStatement("ALTER TABLE " + table + " ALTER COLUMN " + table + "_id INT AUTO_INCREMENT")
-			        .execute();
+					.execute();
 		}
-		
-		executeDataSet(INITIAL_XML_DATASET_PACKAGE_PATH);
 	}
-	
+
 	/**
 	 * Note that with the H2 DB this operation always commits an open transaction.
 	 * 
@@ -874,7 +883,7 @@ public abstract class BaseContextSensitiveTest extends AbstractJUnit4SpringConte
 				
 				//Commit so that it is not rolled back after a test.
 				getConnection().commit();
-				
+
 				updateSearchIndex();
 				
 				isBaseSetup = true;
@@ -891,7 +900,8 @@ public abstract class BaseContextSensitiveTest extends AbstractJUnit4SpringConte
 	}
 	
 	public Class<?>[] getIndexedTypes() {
-		return new Class<?>[] { ConceptName.class, Drug.class };
+		return new Class<?>[] { ConceptName.class, Drug.class, PersonName.class, PersonAttribute.class,
+				PatientIdentifier.class};
 	}
 	
 	/**

@@ -9,6 +9,8 @@
  */
 package org.openmrs;
 
+import org.hibernate.search.annotations.ContainedIn;
+
 import java.util.Collection;
 import java.util.LinkedList;
 import java.util.List;
@@ -25,19 +27,19 @@ import java.util.Vector;
 public class Patient extends Person {
 	
 	public static final long serialVersionUID = 93123L;
-	
-	// Fields
-	
+
 	private Integer patientId;
-	
+
 	private String allergyStatus = Allergies.UNKNOWN;
-	
+
+	@ContainedIn
 	private Set<PatientIdentifier> identifiers;
 	
 	// Constructors
 	
 	/** default constructor */
 	public Patient() {
+		setPatient(true);
 	}
 	
 	/**
@@ -58,6 +60,7 @@ public class Patient extends Person {
 				this.setUuid(person.getUuid());
 			}
 		}
+		setPatient(true);
 	}
 	
 	/**
@@ -68,6 +71,7 @@ public class Patient extends Person {
 	public Patient(Integer patientId) {
 		super(patientId);
 		this.patientId = patientId;
+		setPatient(true);
 	}
 	
 	// Property accessors
@@ -124,7 +128,7 @@ public class Patient extends Person {
 		super.setPersonId(personId);
 		this.patientId = personId;
 	}
-	
+
 	/**
 	 * Get all of this patients identifiers -- both voided and non-voided ones. If you want only
 	 * non-voided identifiers, use {@link #getActiveIdentifiers()}
@@ -215,7 +219,7 @@ public class Patient extends Person {
 	public PatientIdentifier getPatientIdentifier() {
 		// normally the DAO layer returns these in the correct order, i.e. preferred and non-voided first, but it's possible that someone
 		// has fetched a Patient, changed their identifiers around, and then calls this method, so we have to be careful.
-		if (getIdentifiers() != null && getIdentifiers().size() > 0) {
+		if (getIdentifiers() != null && !getIdentifiers().isEmpty()) {
 			for (PatientIdentifier id : getIdentifiers()) {
 				if (id.isPreferred() && !id.isVoided()) {
 					return id;
@@ -240,7 +244,7 @@ public class Patient extends Person {
 	 * @return Returns a PatientIdentifier of the specified type.
 	 */
 	public PatientIdentifier getPatientIdentifier(PatientIdentifierType pit) {
-		if (getIdentifiers() != null && getIdentifiers().size() > 0) {
+		if (getIdentifiers() != null && !getIdentifiers().isEmpty()) {
 			for (PatientIdentifier id : getIdentifiers()) {
 				if (id.isPreferred() && !id.isVoided() && pit.equals(id.getIdentifierType())) {
 					return id;
@@ -263,7 +267,7 @@ public class Patient extends Person {
 	 * @return preferred patient identifier
 	 */
 	public PatientIdentifier getPatientIdentifier(Integer identifierTypeId) {
-		if (getIdentifiers() != null && getIdentifiers().size() > 0) {
+		if (getIdentifiers() != null && !getIdentifiers().isEmpty()) {
 			for (PatientIdentifier id : getIdentifiers()) {
 				if (id.isPreferred() && !id.isVoided()
 				        && identifierTypeId.equals(id.getIdentifierType().getPatientIdentifierTypeId())) {
@@ -288,7 +292,7 @@ public class Patient extends Person {
 	 * @return preferred patient identifier
 	 */
 	public PatientIdentifier getPatientIdentifier(String identifierTypeName) {
-		if (getIdentifiers() != null && getIdentifiers().size() > 0) {
+		if (getIdentifiers() != null && !getIdentifiers().isEmpty()) {
 			for (PatientIdentifier id : getIdentifiers()) {
 				if (id.isPreferred() && !id.isVoided() && identifierTypeName.equals(id.getIdentifierType().getName())) {
 					return id;

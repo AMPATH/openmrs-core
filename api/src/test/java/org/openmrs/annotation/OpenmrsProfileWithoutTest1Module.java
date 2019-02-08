@@ -7,18 +7,11 @@
  * Copyright (C) OpenMRS Inc. OpenMRS is a registered trademark and the OpenMRS
  * graphic logo is a trademark of OpenMRS Inc.
  */
-package org.openmrs.api.order.exceptions;
-
-import org.openmrs.api.APIException;
+package org.openmrs.annotation;
 
 /**
- * Thrown when a previous order is required.
+ * Test bean which should be only loaded when module 'test1' is missing
  */
-public class PreviousOrderRequiredException extends APIException {
-	
-	public static final long serialVersionUID = 22121216L;
-	
-	public PreviousOrderRequiredException() {
-		super("Order.previous.required");
-	}
+@OpenmrsProfile(modules = { "!test1" })
+public class OpenmrsProfileWithoutTest1Module {
 }

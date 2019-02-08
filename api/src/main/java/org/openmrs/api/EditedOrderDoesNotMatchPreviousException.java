@@ -7,18 +7,19 @@
  * Copyright (C) OpenMRS Inc. OpenMRS is a registered trademark and the OpenMRS
  * graphic logo is a trademark of OpenMRS Inc.
  */
-package org.openmrs.api.order.exceptions;
-
-import org.openmrs.api.APIException;
+package org.openmrs.api;
 
 /**
- * Thrown when the Order has already been discontinued.
+ * Thrown when the new edited order contains modified properties that must be the same as previous
+ * order.
+ * 
+ * @since 2.1
  */
-public class CannotDiscontinueAlreadyDiscontinuedOrderException extends APIException {
+public class EditedOrderDoesNotMatchPreviousException extends OrderEntryException {
 	
-	public static final long serialVersionUID = 22121214L;
+	public static final long serialVersionUID = 22121218L;
 	
-	public CannotDiscontinueAlreadyDiscontinuedOrderException() {
-		super("Order.stopped.cannot.discontinued");
+	public EditedOrderDoesNotMatchPreviousException(String message) {
+		super(message, (Object[]) null);
 	}
 }

@@ -9,7 +9,6 @@
  */
 package org.openmrs;
 
-import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -64,6 +63,38 @@ import java.util.Set;
  * @see Encounter
  */
 public class Obs extends BaseOpenmrsData {
+	
+	/**
+	 * @since 2.1.0
+	 */
+	public enum Interpretation {
+		NORMAL,
+		ABNORMAL,
+		CRITICALLY_ABNORMAL,
+		NEGATIVE,
+		POSITIVE,
+		CRITICALLY_LOW,
+		LOW,
+		HIGH,
+		CRITICALLY_HIGH,
+		VERY_SUSCEPTIBLE,
+		SUSCEPTIBLE,
+		INTERMEDIATE,
+		RESISTANT,
+		SIGNIFICANT_CHANGE_DOWN,
+		SIGNIFICANT_CHANGE_UP,
+		OFF_SCALE_LOW,
+		OFF_SCALE_HIGH
+	}
+	
+	/**
+	 * @since 2.1.0
+	 */
+	public enum Status {
+		PRELIMINARY,
+		FINAL,
+		AMENDED
+	}
 	
 	private static final String DATE_TIME_PATTERN = "yyyy-MM-dd HH:mm";
 	
@@ -141,6 +172,10 @@ public class Obs extends BaseOpenmrsData {
 	
 	private Boolean dirty = Boolean.FALSE;
 	
+	private Interpretation interpretation;
+	
+	private Status status = Status.FINAL;
+	
 	/** default constructor */
 	public Obs() {
 	}
@@ -197,6 +232,8 @@ public class Obs extends BaseOpenmrsData {
 		newObs.setVoidedBy(obsToCopy.getVoidedBy());
 		newObs.setDateVoided(obsToCopy.getDateVoided());
 		newObs.setVoidReason(obsToCopy.getVoidReason());
+		newObs.setStatus(obsToCopy.getStatus());
+		newObs.setInterpretation(obsToCopy.getInterpretation());
 		
 		newObs.setValueComplex(obsToCopy.getValueComplex());
 		newObs.setComplexData(obsToCopy.getComplexData());
@@ -441,7 +478,7 @@ public class Obs extends BaseOpenmrsData {
 	 * @should not mark the obs as dirty when the set is replaced with another with same members
 	 */
 	public void setGroupMembers(Set<Obs> groupMembers) {
-		this.groupMembers = new HashSet<Obs>(groupMembers); //Copy over the entire list
+		this.groupMembers = groupMembers; //Copy over the entire list
 		
 	}
 	
@@ -610,11 +647,13 @@ public class Obs extends BaseOpenmrsData {
 	 * @param valueBoolean the boolean value matching the boolean coded concept to set to
 	 */
 	public void setValueBoolean(Boolean valueBoolean) {
-		if (valueBoolean != null && getConcept() != null && getConcept().getDatatype().isBoolean()) {
-			setValueCoded(valueBoolean.booleanValue() ? Context.getConceptService().getTrueConcept() : Context
-			        .getConceptService().getFalseConcept());
-		} else if (valueBoolean == null) {
-			setValueCoded(null);
+		if (getConcept() != null && getConcept().getDatatype() != null && getConcept().getDatatype().isBoolean()) {
+			if (valueBoolean != null) {
+				setValueCoded(valueBoolean.booleanValue() ? Context.getConceptService().getTrueConcept() : Context
+				        .getConceptService().getFalseConcept());
+			} else {
+				setValueCoded(null);
+			}
 		}
 	}
 	
@@ -1269,5 +1308,41 @@ public class Obs extends BaseOpenmrsData {
 		if (!isDirty() && obsId != null && !OpenmrsUtil.nullSafeEquals(oldValue, newValue)) {
 			dirty = true;
 		}
+	}
+	
+	/**
+	 * Similar to FHIR's Observation.interpretation. Supports a subset of FHIR's Observation Interpretation Codes.
+	 * See https://www.hl7.org/fhir/valueset-observation-interpretation.html
+	 * @since 2.1.0
+	 */
+	public Interpretation getInterpretation() {
+		return interpretation;
+	}
+	
+	/**
+	 * @since 2.1.0
+	 */
+	public void setInterpretation(Interpretation interpretation) {
+		markAsDirty(this.interpretation, interpretation);
+		this.interpretation = interpretation;
+	}
+	
+	/**
+	 * Similar to FHIR's Observation.status. Supports a subset of FHIR's ObservationStatus values.
+	 * At present OpenMRS does not support FHIR's REGISTERED and CANCELLED statuses, because we don't support obs with
+	 * null values.
+	 * See: https://www.hl7.org/fhir/valueset-observation-status.html
+	 * @since 2.1.0
+	 */
+	public Status getStatus() {
+		return status;
+	}
+	
+	/**
+	 * @since 2.1.0
+	 */
+	public void setStatus(Status status) {
+		markAsDirty(this.status, status);
+		this.status = status;
 	}
 }

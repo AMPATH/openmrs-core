@@ -7,18 +7,20 @@
  * Copyright (C) OpenMRS Inc. OpenMRS is a registered trademark and the OpenMRS
  * graphic logo is a trademark of OpenMRS Inc.
  */
-package org.openmrs.api.order.exceptions;
-
-import org.openmrs.api.APIException;
+package org.openmrs.api.db.hibernate.search;
 
 /**
- * Thrown when an attempt to unvoid an order fails.
+ * All analyzers are defined on BaseOpenmrsObject.
+ *
+ * @see org.openmrs.BaseOpenmrsObject
  */
-public class CannotUnvoidOrderException extends APIException {
+public class LuceneAnalyzers {
 	
-	public static final long serialVersionUID = 22121315L;
+	public static final String START_ANALYZER = "startAnalyzer";
 	
-	public CannotUnvoidOrderException(String action) {
-		super("Order.action.cannot.unvoid", new Object[] { action });
-	}
+	public static final String ANYWHERE_ANALYZER = "anywhereAnalyzer";
+	
+	public static final String EXACT_ANALYZER = "exactAnalyzer";
+	
+	public static final String PHRASE_ANALYZER = "phraseAnalyzer";
 }

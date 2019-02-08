@@ -12,6 +12,9 @@ package org.openmrs;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.codehaus.jackson.annotate.JsonIgnore;
+import org.hibernate.search.annotations.ContainedIn;
+import org.hibernate.search.annotations.DocumentId;
+import org.hibernate.search.annotations.Field;
 import org.openmrs.util.OpenmrsUtil;
 import org.springframework.util.StringUtils;
 
@@ -39,25 +42,30 @@ public class Person extends BaseOpenmrsData {
 	public static final long serialVersionUID = 2L;
 	
 	protected final Log log = LogFactory.getLog(getClass());
-	
+
+	@DocumentId
 	protected Integer personId;
-	
+
 	private Set<PersonAddress> addresses = null;
-	
+
+	@ContainedIn
 	private Set<PersonName> names = null;
-	
+
+	@ContainedIn
 	private Set<PersonAttribute> attributes = null;
-	
+
+	@Field
 	private String gender;
-	
+
 	private Date birthdate;
-	
+
 	private Date birthtime;
-	
+
 	private Boolean birthdateEstimated = false;
-	
+
 	private Boolean deathdateEstimated = false;
-	
+
+	@Field
 	private Boolean dead = false;
 	
 	private Date deathDate;
@@ -71,7 +79,7 @@ public class Person extends BaseOpenmrsData {
 	private User personChangedBy;
 	
 	private Date personDateChanged;
-	
+
 	private Boolean personVoided = false;
 	
 	private User personVoidedBy;
@@ -79,7 +87,8 @@ public class Person extends BaseOpenmrsData {
 	private Date personDateVoided;
 	
 	private String personVoidReason;
-	
+
+	@Field
 	private boolean isPatient;
 	
 	/**
@@ -103,7 +112,7 @@ public class Person extends BaseOpenmrsData {
 	 * (usually a patient or a user subobject). All attributes are copied over to the new object.
 	 * NOTE! All child collection objects are copied as pointers, each individual element is not
 	 * copied. <br>
-	 * 
+	 *
 	 * @param person Person to create this person object from
 	 */
 	public Person(Person person) {
@@ -129,7 +138,7 @@ public class Person extends BaseOpenmrsData {
 		// base creator/voidedBy/changedBy info is not copied here
 		// because that is specific to and will be recreated
 		// by the subobject upon save
-		
+
 		setPersonCreator(person.getPersonCreator());
 		setPersonDateCreated(person.getPersonDateCreated());
 		setPersonChangedBy(person.getPersonChangedBy());
@@ -138,6 +147,8 @@ public class Person extends BaseOpenmrsData {
 		setPersonVoidedBy(person.getPersonVoidedBy());
 		setPersonDateVoided(person.getPersonDateVoided());
 		setPersonVoidReason(person.getPersonVoidReason());
+
+		setPatient(person.getIsPatient());
 	}
 	
 	/**
@@ -298,6 +309,9 @@ public class Person extends BaseOpenmrsData {
 	 */
 	public void setDeathDate(Date deathDate) {
 		this.deathDate = deathDate;
+		if (deathDate != null) {
+			setDead(true);
+		}
 	}
 	
 	/**
@@ -459,11 +473,9 @@ public class Person extends BaseOpenmrsData {
 	 * @should remove attribute when exist
 	 */
 	public void removeAttribute(PersonAttribute attribute) {
-		if (attributes != null) {
-			if (attributes.remove(attribute)) {
-				attributeMap = null;
-				allAttributeMap = null;
-			}
+		if (attributes != null && attributes.remove(attribute)) {
+			attributeMap = null;
+			allAttributeMap = null;
 		}
 	}
 	
@@ -741,7 +753,7 @@ public class Person extends BaseOpenmrsData {
 	public PersonName getPersonName() {
 		// normally the DAO layer returns these in the correct order, i.e. preferred and non-voided first, but it's possible that someone
 		// has fetched a Person, changed their names around, and then calls this method, so we have to be careful.
-		if (getNames() != null && getNames().size() > 0) {
+		if (getNames() != null && !getNames().isEmpty()) {
 			for (PersonName name : getNames()) {
 				if (name.isPreferred() && !name.isVoided()) {
 					return name;
@@ -823,7 +835,7 @@ public class Person extends BaseOpenmrsData {
 	public PersonAddress getPersonAddress() {
 		// normally the DAO layer returns these in the correct order, i.e. preferred and non-voided first, but it's possible that someone
 		// has fetched a Person, changed their addresses around, and then calls this method, so we have to be careful.
-		if (getAddresses() != null && getAddresses().size() > 0) {
+		if (getAddresses() != null && !getAddresses().isEmpty()) {
 			for (PersonAddress addr : getAddresses()) {
 				if (addr.isPreferred() && !addr.isVoided()) {
 					return addr;
@@ -1019,6 +1031,7 @@ public class Person extends BaseOpenmrsData {
 	public boolean getIsPatient() {
 		return isPatient;
 	}
+
 	/**
 	 * This should only be set by the database layer by looking at whether a row exists in the
 	 * patient table
@@ -1026,7 +1039,7 @@ public class Person extends BaseOpenmrsData {
 	 * @param isPatient whether this person is a patient or not
 	 */
 	@SuppressWarnings("unused")
-	private void setPatient(boolean isPatient) {
+	protected void setPatient(boolean isPatient) {
 		this.isPatient = isPatient;
 	}
 	

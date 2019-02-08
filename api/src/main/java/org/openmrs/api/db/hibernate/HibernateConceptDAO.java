@@ -16,6 +16,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -536,14 +537,12 @@ public class HibernateConceptDAO implements ConceptDAO {
 		    false, false, classes, null, datatypes, null, null);
 		
 		List<ConceptName> names = conceptNameQuery.list();
-		
-		List<Concept> concepts = transformNamesToConcepts(names);
-		
-		return concepts;
+
+		return new ArrayList<>(transformNamesToConcepts(names));
 	}
 	
-	private List<Concept> transformNamesToConcepts(List<ConceptName> names) {
-		List<Concept> concepts = new ArrayList<Concept>();
+	private LinkedHashSet<Concept> transformNamesToConcepts(List<ConceptName> names) {
+		LinkedHashSet<Concept> concepts = new LinkedHashSet<>();
 		
 		for (ConceptName name : names) {
 			concepts.add(name.getConcept());
@@ -666,7 +665,7 @@ public class HibernateConceptDAO implements ConceptDAO {
 		List<Concept> concepts = sessionFactory.getCurrentSession().createCriteria(Concept.class).add(
 		    Restrictions.lt("conceptId", i)).addOrder(Order.desc("conceptId")).setFetchSize(1).list();
 		
-		if (concepts.size() < 1) {
+		if (concepts.isEmpty()) {
 			return null;
 		}
 		return concepts.get(0);
@@ -682,7 +681,7 @@ public class HibernateConceptDAO implements ConceptDAO {
 		List<Concept> concepts = sessionFactory.getCurrentSession().createCriteria(Concept.class).add(
 		    Restrictions.gt("conceptId", i)).addOrder(Order.asc("conceptId")).setMaxResults(1).list();
 		
-		if (concepts.size() < 1) {
+		if (concepts.isEmpty()) {
 			return null;
 		}
 		return concepts.get(0);
@@ -842,7 +841,7 @@ public class HibernateConceptDAO implements ConceptDAO {
 		Criteria crit = sessionFactory.getCurrentSession().createCriteria(ConceptNameTag.class).add(
 		    Restrictions.eq("tag", name));
 		
-		if (crit.list().size() < 1) {
+		if (crit.list().isEmpty()) {
 			return null;
 		}
 		
@@ -948,7 +947,7 @@ public class HibernateConceptDAO implements ConceptDAO {
 		 * @see java.util.Iterator#hasNext()
 		 */
 		public boolean hasNext() {
-			return (nextConcept != null);
+			return nextConcept != null;
 		}
 		
 		/**
@@ -1153,7 +1152,19 @@ public class HibernateConceptDAO implements ConceptDAO {
 		criteria.add(Restrictions.eq("uniqueId", uniqueId));
 		return (ConceptSource) criteria.uniqueResult();
 	}
-
+	
+	/**
+	 * @see org.openmrs.api.db.ConceptDAO#getConceptSourceByHL7Code(java.lang.String)
+	 */
+	public ConceptSource getConceptSourceByHL7Code(String hl7Code) {
+		if (StringUtils.isBlank(hl7Code)) {
+			return null;
+		}
+		Criteria criteria = sessionFactory.getCurrentSession().createCriteria(ConceptSource.class);
+		criteria.add(Restrictions.eq("hl7Code", hl7Code));
+		return (ConceptSource) criteria.uniqueResult();
+	}
+	
 	/**
 	 * @see org.openmrs.api.db.ConceptDAO#getSavedConceptDatatype(org.openmrs.Concept)
 	 */
@@ -1291,7 +1302,7 @@ public class HibernateConceptDAO implements ConceptDAO {
 		} else if (searchDrugConceptNames) {
 			LuceneQuery<ConceptName> conceptNameQuery = newConceptNameLuceneQuery(drugName, searchKeywords, Arrays
 			        .asList(locale), exactLocale, includeRetired, null, null, null, null, null);
-			List<Object> conceptIds = conceptNameQuery.listProjection("concept.conceptId");
+			List<Object[]> conceptIds = conceptNameQuery.listProjection("concept.conceptId");
 			if (!conceptIds.isEmpty()) {
 				CollectionUtils.transform(conceptIds, new Transformer() {
 					
@@ -1525,7 +1536,7 @@ public class HibernateConceptDAO implements ConceptDAO {
 		criteria.add(Restrictions.ilike("name", name, MatchMode.EXACT));
 		criteria.add(Restrictions.eq("conceptSource", conceptSource));
 		List terms = criteria.list();
-		if (terms.size() == 0) {
+		if (terms.isEmpty()) {
 			return null;
 		} else if (terms.size() > 1) {
 			throw new APIException("ConceptReferenceTerm.foundMultipleTermsWithNameInSource", new Object[] { name,
@@ -1545,7 +1556,7 @@ public class HibernateConceptDAO implements ConceptDAO {
 		criteria.add(Restrictions.eq("code", code));
 		criteria.add(Restrictions.eq("conceptSource", conceptSource));
 		List terms = criteria.list();
-		if (terms.size() == 0) {
+		if (terms.isEmpty()) {
 			return null;
 		} else if (terms.size() > 1) {
 			throw new APIException("ConceptReferenceTerm.foundMultipleTermsWithCodeInSource", new Object[] { code,
@@ -1691,7 +1702,7 @@ public class HibernateConceptDAO implements ConceptDAO {
 		
 		List<ConceptName> names = conceptNameQuery.list();
 		
-		final List<Concept> concepts = transformNamesToConcepts(names);
+		final List<Concept> concepts = new ArrayList<>(transformNamesToConcepts(names));
 		
 		return concepts;
 	}
@@ -1720,13 +1731,15 @@ public class HibernateConceptDAO implements ConceptDAO {
 		
 		@SuppressWarnings("unchecked")
 		List<ConceptName> list = criteria.list();
-		
-		if (list.size() == 1) {
-			return list.get(0).getConcept();
+		LinkedHashSet<Concept> concepts = transformNamesToConcepts(list);
+
+		if (concepts.size() == 1) {
+			return concepts.iterator().next();
+		} else if (list.size() == 0) {
+			log.warn("No concept found for '" + name + "'");
 		} else {
 			log.warn("Multiple concepts found for '" + name + "'");
 			
-			List<Concept> concepts = transformNamesToConcepts(list);
 			for (Concept concept : concepts) {
 				for (ConceptName conceptName : concept.getNames(locale)) {
 					if (conceptName.getName().equalsIgnoreCase(name)) {
@@ -1844,7 +1857,7 @@ public class HibernateConceptDAO implements ConceptDAO {
 		
 		Criteria criteria = createSearchDrugByMappingCriteria(code, conceptSource, includeRetired);
 		// match with any of the supplied collection of conceptMapTypes
-		if (withAnyOfTheseTypes.size() > 0) {
+		if (!withAnyOfTheseTypes.isEmpty()) {
 			criteria.add(Restrictions.in("map.conceptMapType", withAnyOfTheseTypes));
 		}
 		//check whether retired on not retired drugs
@@ -1860,7 +1873,7 @@ public class HibernateConceptDAO implements ConceptDAO {
 		Criteria criteria = createSearchDrugByMappingCriteria(code, conceptSource, true);
 		
 		// match with any of the supplied collection or order of preference of conceptMapTypes
-		if (withAnyOfTheseTypesOrOrderOfPreference.size() > 0) {
+		if (!withAnyOfTheseTypesOrOrderOfPreference.isEmpty()) {
 			for (ConceptMapType conceptMapType : withAnyOfTheseTypesOrOrderOfPreference) {
 				criteria.add(Restrictions.eq("map.conceptMapType", conceptMapType));
 				List<Drug> drugs = criteria.list();

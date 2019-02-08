@@ -54,7 +54,7 @@ public class LoggingAdvice implements MethodInterceptor {
 		Method method = invocation.getMethod();
 		String name = method.getName();
 		
-		// decide what type of logging we're doing with the current method and loglevel
+		// decide what type of logging we're doing with the current method and the loglevel
 		boolean isSetterTypeOfMethod = OpenmrsUtil.stringStartsWith(name, SETTER_METHOD_PREFIXES);
 		boolean logGetter = !isSetterTypeOfMethod && log.isDebugEnabled();
 		boolean logSetter = isSetterTypeOfMethod && log.isInfoEnabled();
@@ -133,7 +133,7 @@ public class LoggingAdvice implements MethodInterceptor {
 					}
 				}
 				log.debug(String.format(
-				    "An error occurred while executing this method.\nCurrent user: %s\nError message: %s", username, e
+				    "An error occurred while executing this method.%nCurrent user: %s%nError message: %s", username, e
 				            .getMessage()), e);
 			}
 			throw e;

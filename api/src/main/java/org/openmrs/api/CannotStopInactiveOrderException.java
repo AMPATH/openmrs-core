@@ -7,14 +7,18 @@
  * Copyright (C) OpenMRS Inc. OpenMRS is a registered trademark and the OpenMRS
  * graphic logo is a trademark of OpenMRS Inc.
  */
-package org.openmrs;
+package org.openmrs.api;
 
-public enum AllergyType {
-	DRUG,
-	FOOD,
-	ENVIRONMENT,
-	ANIMAL,
-	PLANT,
-	POLLEN,
-	OTHER
+/**
+ * Thrown when the Order has already been discontinued.
+ * 
+ * @since 2.1
+ */
+public class CannotStopInactiveOrderException extends OrderEntryException {
+	
+	public static final long serialVersionUID = 22121214L;
+	
+	public CannotStopInactiveOrderException() {
+		super("Order.cannot.discontinue.inactive", (Object[]) null);
+	}
 }

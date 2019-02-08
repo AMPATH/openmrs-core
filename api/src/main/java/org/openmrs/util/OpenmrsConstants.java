@@ -318,7 +318,11 @@ public final class OpenmrsConstants {
 	
 	public static final String GLOBAL_PROPERTY_DEFAULT_WEEK_START_DAY_DEFAULT_VALUE = "0";
 	
+	public static final String GLOBAL_PROPERTY_PATIENT_IDENTIFIER_SEARCH_MATCH_MODE = "patientIdentifierSearch.matchMode";
+	
 	public static final String GLOBAL_PROPERTY_PATIENT_SEARCH_MATCH_MODE = "patientSearch.matchMode";
+	
+	public static final String GLOBAL_PROPERTY_PATIENT_SEARCH_MATCH_EXACT = "EXACT";
 	
 	public static final String GLOBAL_PROPERTY_PATIENT_SEARCH_MATCH_ANYWHERE = "ANYWHERE";
 	
@@ -581,7 +585,7 @@ public final class OpenmrsConstants {
 	 * 
 	 * @since 1.11
 	 */
-	public static final Integer SEARCH_INDEX_VERSION = 3;
+	public static final Integer SEARCH_INDEX_VERSION = 7;
 
 	/**
 	 * @since 1.12
@@ -904,6 +908,12 @@ public final class OpenmrsConstants {
 		props.add(new GlobalProperty(GLOBAL_PROPERTY_DEFAULT_LOCATION_NAME, "Unknown Location",
 		        "The name of the location to use as a system default"));
 		props
+				.add(new GlobalProperty(
+						GLOBAL_PROPERTY_PATIENT_IDENTIFIER_SEARCH_MATCH_MODE,
+						GLOBAL_PROPERTY_PATIENT_SEARCH_MATCH_EXACT,
+						"Specifies how patient identifiers are matched while searching for a patient. Valid values are 'EXACT, 'ANYWHERE' or 'START'. Defaults to 'EXACT' if missing or invalid value is present."));
+		
+		props
 		        .add(new GlobalProperty(
 		                GLOBAL_PROPERTY_PATIENT_SEARCH_MATCH_MODE,
 		                GLOBAL_PROPERTY_PATIENT_SEARCH_MATCH_START,
@@ -969,7 +979,7 @@ public final class OpenmrsConstants {
 		props
 		        .add(new GlobalProperty(
 		                GP_CASE_SENSITIVE_DATABASE_STRING_COMPARISON,
-		                "true",
+		                "false",
 		                "Indicates whether database string comparison is case sensitive or not. Setting this to false for MySQL with a case insensitive collation improves search performance."));
 		props
 		        .add(new GlobalProperty(

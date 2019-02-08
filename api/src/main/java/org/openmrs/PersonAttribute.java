@@ -9,17 +9,25 @@
  */
 package org.openmrs;
 
+import org.apache.commons.lang.StringUtils;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.hibernate.search.annotations.Analyzer;
+import org.hibernate.search.annotations.Boost;
+import org.hibernate.search.annotations.DocumentId;
+import org.hibernate.search.annotations.Fields;
+import org.hibernate.search.annotations.Indexed;
+import org.hibernate.search.annotations.Field;
+import org.hibernate.search.annotations.IndexedEmbedded;
+import org.openmrs.api.context.Context;
+import org.openmrs.api.db.hibernate.search.LuceneAnalyzers;
+import org.openmrs.util.OpenmrsClassLoader;
+import org.openmrs.util.OpenmrsUtil;
+
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.Comparator;
 import java.util.Date;
-
-import org.apache.commons.lang.StringUtils;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-import org.openmrs.api.context.Context;
-import org.openmrs.util.OpenmrsClassLoader;
-import org.openmrs.util.OpenmrsUtil;
 
 /**
  * A PersonAttribute is meant as way for implementations to add arbitrary information about a
@@ -32,6 +40,7 @@ import org.openmrs.util.OpenmrsUtil;
  * @see org.openmrs.PersonAttributeType
  * @see org.openmrs.Attributable
  */
+@Indexed
 public class PersonAttribute extends BaseOpenmrsData implements java.io.Serializable, Comparable<PersonAttribute> {
 	
 	public static final long serialVersionUID = 11231211232111L;
@@ -39,13 +48,21 @@ public class PersonAttribute extends BaseOpenmrsData implements java.io.Serializ
 	private static final Log log = LogFactory.getLog(PersonAttribute.class);
 	
 	// Fields
-	
+	@DocumentId
 	private Integer personAttributeId;
-	
+
+	@IndexedEmbedded(includeEmbeddedObjectId = true)
 	private Person person;
-	
+
+	@IndexedEmbedded
 	private PersonAttributeType attributeType;
-	
+
+	@Fields({
+			@Field(name = "valuePhrase", analyzer = @Analyzer(definition = LuceneAnalyzers.PHRASE_ANALYZER), boost = @Boost(8f)),
+			@Field(name = "valueExact", analyzer = @Analyzer(definition = LuceneAnalyzers.EXACT_ANALYZER), boost = @Boost(4f)),
+			@Field(name = "valueStart", analyzer = @Analyzer(definition = LuceneAnalyzers.START_ANALYZER), boost = @Boost(2f)),
+			@Field(name = "valueAnywhere", analyzer = @Analyzer(definition = LuceneAnalyzers.ANYWHERE_ANALYZER))
+	})
 	private String value;
 	
 	/** default constructor */

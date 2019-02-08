@@ -13,7 +13,7 @@
    <parent>
       <groupId>org.openmrs</groupId>
       <artifactId>openmrs</artifactId>
-      <version>2.1.0-SNAPSHOT</version>
+      <version>2.1.4</version>
    </parent>
    <modelVersion>4.0.0</modelVersion>
    <groupId>org.openmrs.api</groupId>
@@ -108,6 +108,14 @@
          		<groupId>xml-apis</groupId>
          	</exclusion>
          </exclusions>
+      </dependency>
+      <dependency>
+         <groupId>ca.uhn.hapi</groupId>
+         <artifactId>hapi-structures-v23</artifactId>
+      </dependency>
+      <dependency>
+         <groupId>ca.uhn.hapi</groupId>
+         <artifactId>hapi-structures-v24</artifactId>
       </dependency>
       <dependency>
          <groupId>ca.uhn.hapi</groupId>
@@ -217,6 +225,18 @@
            <groupId>org.codehaus.jackson</groupId>
            <artifactId>jackson-mapper-asl</artifactId>
        </dependency>
+      <dependency>
+         <groupId>com.fasterxml.jackson.core</groupId>
+         <artifactId>jackson-core</artifactId>
+      </dependency>
+      <dependency>
+         <groupId>com.fasterxml.jackson.core</groupId>
+         <artifactId>jackson-annotations</artifactId>
+      </dependency>
+      <dependency>
+         <groupId>com.fasterxml.jackson.core</groupId>
+         <artifactId>jackson-databind</artifactId>
+      </dependency>
        <dependency>
 		   <groupId>org.codehaus.groovy</groupId>
 		   <artifactId>groovy-all</artifactId>
@@ -227,6 +247,11 @@
 		   <groupId>net.sf.ehcache</groupId>
 		   <artifactId>ehcache</artifactId>
        </dependency>
+       <dependency>
+	<groupId>net.bull.javamelody</groupId>
+	<artifactId>javamelody-core</artifactId>
+	<version>1.71.0</version>
+</dependency>
    </dependencies>
    <build>
      <resources>

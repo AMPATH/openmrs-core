@@ -9,48 +9,77 @@
  */
 package org.openmrs;
 
-import static org.apache.commons.lang.StringUtils.defaultString;
+import org.apache.commons.lang.builder.EqualsBuilder;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.codehaus.jackson.annotate.JsonIgnore;
+import org.hibernate.search.annotations.Analyzer;
+import org.hibernate.search.annotations.Boost;
+import org.hibernate.search.annotations.DocumentId;
+import org.hibernate.search.annotations.Field;
+import org.hibernate.search.annotations.Fields;
+import org.hibernate.search.annotations.Indexed;
+import org.hibernate.search.annotations.IndexedEmbedded;
+import org.openmrs.api.db.hibernate.search.LuceneAnalyzers;
+import org.openmrs.util.OpenmrsConstants;
+import org.openmrs.util.OpenmrsUtil;
+import org.springframework.util.StringUtils;
 
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
 
-import org.apache.commons.lang.builder.EqualsBuilder;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-import org.codehaus.jackson.annotate.JsonIgnore;
-import org.openmrs.util.OpenmrsConstants;
-import org.openmrs.util.OpenmrsUtil;
-import org.springframework.util.StringUtils;
+import static org.apache.commons.lang.StringUtils.defaultString;
 
 /**
  * A Person can have zero to n PersonName(s).
  */
+@Indexed
 public class PersonName extends BaseOpenmrsData implements java.io.Serializable, Cloneable, Comparable<PersonName> {
 	
 	public static final long serialVersionUID = 4353L;
-	
+
 	private static final Log log = LogFactory.getLog(PersonName.class);
-	
+
 	// Fields
-	
+	@DocumentId
 	private Integer personNameId;
-	
+
+	@IndexedEmbedded(includeEmbeddedObjectId = true)
 	private Person person;
-	
+
 	private Boolean preferred = false;
-	
-	private String prefix;
-	
+
+	@Fields({
+			@Field(name = "givenNameExact", analyzer = @Analyzer(definition = LuceneAnalyzers.EXACT_ANALYZER), boost = @Boost(8f)),
+			@Field(name = "givenNameStart", analyzer = @Analyzer(definition = LuceneAnalyzers.START_ANALYZER), boost = @Boost(4f)),
+			@Field(name = "givenNameAnywhere", analyzer = @Analyzer(definition = LuceneAnalyzers.ANYWHERE_ANALYZER), boost = @Boost(2f))
+	})
 	private String givenName;
-	
+	private String prefix;
+
+	@Fields({
+			@Field(name = "middleNameExact", analyzer = @Analyzer(definition = LuceneAnalyzers.EXACT_ANALYZER), boost = @Boost(4f)),
+			@Field(name = "middleNameStart", analyzer = @Analyzer(definition = LuceneAnalyzers.START_ANALYZER), boost = @Boost(2f)),
+			@Field(name = "middleNameAnywhere", analyzer = @Analyzer(definition = LuceneAnalyzers.ANYWHERE_ANALYZER))
+	})
 	private String middleName;
 	
 	private String familyNamePrefix;
-	
+
+	@Fields({
+			@Field(name = "familyNameExact", analyzer = @Analyzer(definition = LuceneAnalyzers.EXACT_ANALYZER), boost = @Boost(8f)),
+			@Field(name = "familyNameStart", analyzer = @Analyzer(definition = LuceneAnalyzers.START_ANALYZER), boost = @Boost(4f)),
+			@Field(name = "familyNameAnywhere", analyzer = @Analyzer(definition = LuceneAnalyzers.ANYWHERE_ANALYZER), boost = @Boost(2f)),
+	})
 	private String familyName;
-	
+
+	@Fields({
+			@Field(name = "familyName2Exact", analyzer = @Analyzer(definition = LuceneAnalyzers.EXACT_ANALYZER), boost = @Boost(4f)),
+			@Field(name = "familyName2Start", analyzer = @Analyzer(definition = LuceneAnalyzers.START_ANALYZER), boost = @Boost(2f)),
+			@Field(name = "familyName2Anywhere", analyzer = @Analyzer(definition = LuceneAnalyzers.ANYWHERE_ANALYZER)),
+	})
 	private String familyName2;
 	
 	private String familyNameSuffix;
@@ -105,7 +134,7 @@ public class PersonName extends BaseOpenmrsData implements java.io.Serializable,
 	}
 	
 	/**
-	 * bitwise copy of the personName object. NOTICE: THIS WILL NOT COPY THE PATIENT OBJECT. The
+	 * Bitwise copy of the personName object. NOTICE: THIS WILL NOT COPY THE PATIENT OBJECT. The
 	 * PersonName.person object in this object AND the cloned object will point at the same person
 	 *
 	 * @return New PersonName object
@@ -363,7 +392,7 @@ public class PersonName extends BaseOpenmrsData implements java.io.Serializable,
 	}
 	
 	/**
-	 * Convenience method to get all the names of this PersonName and concatonating them together
+	 * Convenience method to get all the names of this PersonName and concatenating them together
 	 * with spaces in between. If any part of {@link #getPrefix()}, {@link #getGivenName()},
 	 * {@link #getMiddleName()}, etc are null, they are not included in the returned name
 	 *
@@ -428,7 +457,7 @@ public class PersonName extends BaseOpenmrsData implements java.io.Serializable,
 	}
 	
 	/**
-	 * TODO: the behavior of this method needs to be controlled by some sort of global property
+	 * TODO: the behaviour of this method needs to be controlled by some sort of global property
 	 * because an implementation can define how they want their names to look (which fields to
 	 * show/hide)
 	 * 

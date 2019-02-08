@@ -101,12 +101,12 @@ public class ConceptTest extends BaseContextSensitiveTest {
 		
 		ConceptName initialPreferred = createMockConceptName(3, primaryLocale, null, true);
 		testConcept.addName(initialPreferred);
-		Assert.assertEquals(true, initialPreferred.isLocalePreferred());
+		Assert.assertEquals(true, initialPreferred.getLocalePreferred());
 		ConceptName newPreferredName = createMockConceptName(4, primaryLocale, null, false);
 		testConcept.setPreferredName(newPreferredName);
 		
-		assertEquals(false, initialPreferred.isLocalePreferred());
-		assertEquals(true, newPreferredName.isLocalePreferred());
+		assertEquals(false, initialPreferred.getLocalePreferred());
+		assertEquals(true, newPreferredName.getLocalePreferred());
 	}
 	
 	/**
@@ -526,7 +526,7 @@ public class ConceptTest extends BaseContextSensitiveTest {
 		ConceptSet set2 = new ConceptSet(new Concept(2), 1.0);
 		ConceptSet set3 = new ConceptSet(new Concept(3), 0.0);
 		
-		List<ConceptSet> sets = new ArrayList<ConceptSet>();
+		List<ConceptSet> sets = new ArrayList<>();
 		sets.add(set0);
 		sets.add(set1);
 		sets.add(set2);
@@ -564,7 +564,7 @@ public class ConceptTest extends BaseContextSensitiveTest {
 		ConceptSet set5 = new ConceptSet();
 		set5.setConcept(retiredConcept3);
 		
-		List<ConceptSet> sets = new ArrayList<ConceptSet>();
+		List<ConceptSet> sets = new ArrayList<>();
 		sets.add(set0);
 		sets.add(set1);
 		sets.add(set2);
@@ -1081,7 +1081,7 @@ public class ConceptTest extends BaseContextSensitiveTest {
 	
 	/**
 	 * @see Concept#getName()
-	 * @verifies return name in broader locale incase none is found in specific one
+	 * @verifies return name in broader locale in case none is found in specific one
 	 */
 	@Test
 	public void getName_shouldReturnNameInBroaderLocaleIncaseNoneIsFoundInSpecificOne() throws Exception {
@@ -1131,7 +1131,7 @@ public class ConceptTest extends BaseContextSensitiveTest {
 
 	/**
 	 * @see Concept#hasName(String, Locale)
-	 * @verifies hasName returns ture if locale parameter Is Null but name is found
+	 * @verifies hasName returns true if locale parameter Is Null but name is found
 	 */
 	@Test
 	public void hasName_shouldReturnTrueIfLocaleIsNullButNameExists()
@@ -1214,7 +1214,7 @@ public class ConceptTest extends BaseContextSensitiveTest {
 		concept.setDatatype(new ConceptDatatype(1));
 		concept.setConceptClass(new ConceptClass(1));
 
-		List<Concept> expectedConcepts = new Vector<Concept>();
+		List<Concept> expectedConcepts = new Vector<>();
 		
 		concept = Context.getConceptService().saveConcept(concept);
 		expectedConcepts.add(concept);

@@ -347,6 +347,15 @@ public interface ProgramWorkflowService extends OpenmrsService {
 	// **************************
 	
 	/**
+	 * Get {@code ProgramWorkflow} by internal identifier.
+	 * 
+	 * @param workflowId the primary key of the workflow to find, null not ok
+	 * @return the program workflow matching given id or null if not found
+	 * @since 2.2.0
+	 */
+	public ProgramWorkflow getWorkflow(Integer workflowId);
+	
+	/**
 	 * Get ProgramWorkflow by its UUID
 	 * 
 	 * @param uuid
@@ -428,6 +437,15 @@ public interface ProgramWorkflowService extends OpenmrsService {
 	 * @should return concept state conversion for given workflow and trigger
 	 */
 	public ConceptStateConversion getConceptStateConversion(ProgramWorkflow workflow, Concept trigger) throws APIException;
+	
+	/**
+	 * Get {@code ProgramWorkflowState} by internal identifier.
+	 * 
+	 * @param stateId the primary key of the state to find, null not ok
+	 * @return the program workflow state matching given id or null if not found
+	 * @since 2.2.0
+	 */
+	public ProgramWorkflowState getState(Integer stateId);
 	
 	/**
 	 * Get a state by its uuid. There should be only one of these in the database. If multiple are
