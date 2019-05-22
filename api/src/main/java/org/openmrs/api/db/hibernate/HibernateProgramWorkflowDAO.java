@@ -296,6 +296,14 @@ public class HibernateProgramWorkflowDAO implements ProgramWorkflowDAO {
 	}
 	
 	/**
+	 * @see org.openmrs.api.db.ProgramWorkflowDAO#getState(Integer)
+	 */
+	@Override
+	public ProgramWorkflowState getState(Integer stateId) {
+		return (ProgramWorkflowState) sessionFactory.getCurrentSession().get(ProgramWorkflowState.class, stateId);
+	}
+	
+	/**
 	 * @see org.openmrs.api.db.ProgramWorkflowDAO#getStateByUuid(java.lang.String)
 	 */
 	public ProgramWorkflowState getStateByUuid(String uuid) {
@@ -306,6 +314,14 @@ public class HibernateProgramWorkflowDAO implements ProgramWorkflowDAO {
 	public PatientState getPatientStateByUuid(String uuid) {
 		return (PatientState) sessionFactory.getCurrentSession().createQuery("from PatientState pws where pws.uuid = :uuid")
 		        .setString("uuid", uuid).uniqueResult();
+	}
+	
+	/**
+	 * @see org.openmrs.api.db.ProgramWorkflowDAO#getWorkflow(Integer)
+	 */
+	@Override
+	public ProgramWorkflow getWorkflow(Integer workflowId) {
+		return (ProgramWorkflow) sessionFactory.getCurrentSession().get(ProgramWorkflow.class, workflowId);
 	}
 	
 	/**

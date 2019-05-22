@@ -9,16 +9,7 @@
  */
 package org.openmrs.api.db;
 
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.containsInAnyOrder;
-import static org.hamcrest.Matchers.is;
-
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.Set;
-
+import org.apache.commons.io.FileUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.hamcrest.FeatureMatcher;
@@ -26,13 +17,20 @@ import org.hamcrest.Matcher;
 import org.hibernate.SessionFactory;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.openmrs.Location;
 import org.openmrs.Patient;
 import org.openmrs.PatientIdentifier;
 import org.openmrs.PatientIdentifierType;
+import org.openmrs.Person;
+import org.openmrs.PersonAttribute;
+import org.openmrs.PersonAttributeType;
 import org.openmrs.PersonName;
+import org.openmrs.api.AdministrationService;
+import org.openmrs.api.LocationService;
 import org.openmrs.api.PatientService;
+import org.openmrs.api.PersonService;
 import org.openmrs.api.context.Context;
 import org.openmrs.api.db.hibernate.HibernatePatientDAO;
 import org.openmrs.api.db.hibernate.HibernatePersonDAO;
@@ -41,6 +39,22 @@ import org.openmrs.test.BaseContextSensitiveTest;
 import org.openmrs.test.Verifies;
 import org.openmrs.util.GlobalPropertiesTestHelper;
 import org.openmrs.util.OpenmrsConstants;
+import org.springframework.beans.factory.annotation.Autowired;
+
+import java.io.File;
+import java.net.URL;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.Random;
+import java.util.Set;
+
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.contains;
+import static org.hamcrest.Matchers.containsInAnyOrder;
+import static org.hamcrest.Matchers.empty;
+import static org.hamcrest.Matchers.is;
 
 public class PatientDAOTest extends BaseContextSensitiveTest {
 	
@@ -49,11 +63,25 @@ public class PatientDAOTest extends BaseContextSensitiveTest {
 	private final static String PEOPLE_FROM_THE_SHIRE_XML = "org/openmrs/api/db/hibernate/include/HibernatePersonDAOTest-people.xml";
 	
 	private final static String PATIENTS_FROM_THE_SHIRE_XML = "org/openmrs/api/db/hibernate/include/HibernatePatientDAOTest-patients.xml";
-	
-	private PatientDAO dao = null;
-	
-	private PatientService pService = null;
-	
+
+	@Autowired
+	private SessionFactory sessionFactory;
+
+	@Autowired
+	private PatientDAO dao;
+
+	@Autowired
+	private PatientService patientService;
+
+	@Autowired
+	private PersonService personService;
+
+	@Autowired
+	private LocationService locationService;
+
+	@Autowired
+	private AdministrationService adminService;
+
 	private GlobalPropertiesTestHelper globalPropertiesTestHelper;
 	
 	private PersonAttributeHelper personAttributeHelper;
@@ -66,21 +94,18 @@ public class PatientDAOTest extends BaseContextSensitiveTest {
 	 */
 	@Before
 	public void runBeforeEachTest() throws Exception {
-		
 		executeDataSet(PEOPLE_FROM_THE_SHIRE_XML);
 		executeDataSet(PATIENTS_FROM_THE_SHIRE_XML);
-		
-		if (dao == null)
-			// fetch the dao from the spring application context
-			// this bean name matches the name in /metadata/spring/applicationContext-service.xml
-			dao = (PatientDAO) applicationContext.getBean("patientDAO");
-		if (pService == null)
-			pService = Context.getPatientService();
-		
-		SessionFactory sessionFactory = (SessionFactory) applicationContext.getBean("sessionFactory");
+
+		updateSearchIndex();
+
 		personAttributeHelper = new PersonAttributeHelper(sessionFactory);
-		globalPropertiesTestHelper = new GlobalPropertiesTestHelper(Context.getAdministrationService());
-		
+		globalPropertiesTestHelper = new GlobalPropertiesTestHelper(adminService);
+
+		globalPropertiesTestHelper.setGlobalProperty(OpenmrsConstants.GLOBAL_PROPERTY_PATIENT_SEARCH_MATCH_MODE,
+				OpenmrsConstants.GLOBAL_PROPERTY_PATIENT_SEARCH_MATCH_START);
+		globalPropertiesTestHelper.setGlobalProperty(OpenmrsConstants.GLOBAL_PROPERTY_PERSON_ATTRIBUTE_SEARCH_MATCH_MODE,
+				OpenmrsConstants.GLOBAL_PROPERTY_PERSON_ATTRIBUTE_SEARCH_MATCH_EXACT);
 	}
 	
 	private void logPatientList(List<Patient> patients) {
@@ -107,20 +132,22 @@ public class PatientDAOTest extends BaseContextSensitiveTest {
 	public void getPatients_shouldEscapeAnAsterixCharacterInIdentifierPhrase() throws Exception {
 		//Note that all tests for wildcard should be pass in 2s due to the behaviour of wildcards,
 		//that is we test for the size and actual patient object returned
-		Patient patient2 = pService.getPatient(2);
-		PatientIdentifier patientIdentifier = new PatientIdentifier("*567", pService.getPatientIdentifierType(5), Context
+		Patient patient2 = patientService.getPatient(2);
+		PatientIdentifier patientIdentifier = new PatientIdentifier("*567", patientService.getPatientIdentifierType(5), Context
 		        .getLocationService().getLocation(1));
 		patient2.addIdentifier(patientIdentifier);
-		pService.savePatient(patient2);
+		patientService.savePatient(patient2);
 		
 		//add closely matching identifier to a different patient
-		Patient patient6 = pService.getPatient(6);
-		PatientIdentifier patientIdentifier6 = new PatientIdentifier("4567", pService.getPatientIdentifierType(5), Context
+		Patient patient6 = patientService.getPatient(6);
+		PatientIdentifier patientIdentifier6 = new PatientIdentifier("4567", patientService.getPatientIdentifierType(5), Context
 		        .getLocationService().getLocation(1));
 		patientIdentifier6.setPreferred(true);
 		patient6.addIdentifier(patientIdentifier6);
-		pService.savePatient(patient6);
-		
+		patientService.savePatient(patient6);
+
+		updateSearchIndex();
+
 		//we expect only one matching patient
 		int actualSize = dao.getPatients("*567", 0, null).size();
 		Assert.assertEquals(1, actualSize);
@@ -138,19 +165,21 @@ public class PatientDAOTest extends BaseContextSensitiveTest {
 	@Verifies(value = "should escape percentage character in identifier phrase", method = "getPatients(String,String,List<QPatientIdentifierType;>,null)")
 	public void getPatients_shouldEscapePercentageCharacterInIdentifierPhrase() throws Exception {
 		
-		Patient patient2 = pService.getPatient(2);
-		PatientIdentifier patientIdentifier = new PatientIdentifier("%567", pService.getPatientIdentifierType(5), Context
+		Patient patient2 = patientService.getPatient(2);
+		PatientIdentifier patientIdentifier = new PatientIdentifier("%567", patientService.getPatientIdentifierType(5), Context
 		        .getLocationService().getLocation(1));
 		patient2.addIdentifier(patientIdentifier);
-		pService.savePatient(patient2);
+		patientService.savePatient(patient2);
 		
 		//add closely matching identifier to a different patient
-		Patient patient6 = pService.getPatient(6);
-		PatientIdentifier patientIdentifier6 = new PatientIdentifier("4567", pService.getPatientIdentifierType(5), Context
+		Patient patient6 = patientService.getPatient(6);
+		PatientIdentifier patientIdentifier6 = new PatientIdentifier("4567", patientService.getPatientIdentifierType(5), Context
 		        .getLocationService().getLocation(1));
 		patientIdentifier6.setPreferred(true);
 		patient6.addIdentifier(patientIdentifier6);
-		pService.savePatient(patient6);
+		patientService.savePatient(patient6);
+
+		updateSearchIndex();
 		
 		//we expect only one matching patient
 		int actualSize = dao.getPatients("%567", 0, null).size();
@@ -170,19 +199,21 @@ public class PatientDAOTest extends BaseContextSensitiveTest {
 	public void getPatients_shouldEscapeUnderscoreCharacterInIdentifierPhrase() throws Exception {
 		deleteAllData();
 		baseSetupWithStandardDataAndAuthentication();
-		Patient patient2 = pService.getPatient(2);
-		PatientIdentifier patientIdentifier = new PatientIdentifier("_567", pService.getPatientIdentifierType(5), Context
+		Patient patient2 = patientService.getPatient(2);
+		PatientIdentifier patientIdentifier = new PatientIdentifier("_567", patientService.getPatientIdentifierType(5), Context
 		        .getLocationService().getLocation(1));
 		patient2.addIdentifier(patientIdentifier);
-		pService.savePatient(patient2);
+		patientService.savePatient(patient2);
 		
 		//add closely matching identifier to a different patient
-		Patient patient6 = pService.getPatient(6);
-		PatientIdentifier patientIdentifier6 = new PatientIdentifier("4567", pService.getPatientIdentifierType(5), Context
+		Patient patient6 = patientService.getPatient(6);
+		PatientIdentifier patientIdentifier6 = new PatientIdentifier("4567", patientService.getPatientIdentifierType(5), Context
 		        .getLocationService().getLocation(1));
 		patientIdentifier6.setPreferred(true);
 		patient6.addIdentifier(patientIdentifier6);
-		pService.savePatient(patient6);
+		patientService.savePatient(patient6);
+
+		updateSearchIndex();
 		
 		//we expect only one matching patient
 		int actualSize = dao.getPatients("_567", 0, null).size();
@@ -201,17 +232,19 @@ public class PatientDAOTest extends BaseContextSensitiveTest {
 	@Verifies(value = "should escape percentage character in name phrase", method = "getPatients(String,String,List<QPatientIdentifierType;>,null)")
 	public void getPatients_shouldEscapePercentageCharacterInNamePhrase() throws Exception {
 		
-		Patient patient2 = pService.getPatient(2);
+		Patient patient2 = patientService.getPatient(2);
 		PersonName name = new PersonName("%cats", "and", "dogs");
 		patient2.addName(name);
-		pService.savePatient(patient2);
+		patientService.savePatient(patient2);
 		
 		//add a new closely matching identifier to another patient
-		Patient patient6 = pService.getPatient(6);
+		Patient patient6 = patientService.getPatient(6);
 		PersonName name6 = new PersonName("acats", "and", "dogs");
 		patient6.addName(name6);
 		patient6.getPatientIdentifier().setPreferred(true);
-		pService.savePatient(patient6);
+		patientService.savePatient(patient6);
+
+		updateSearchIndex();
 		
 		//we expect only one matching patient
 		int actualSize = dao.getPatients("%ca", 0, null).size();
@@ -229,17 +262,19 @@ public class PatientDAOTest extends BaseContextSensitiveTest {
 	@Verifies(value = "should escape underscore character in name phrase", method = "getPatients(String,String,List<QPatientIdentifierType;>,null)")
 	public void getPatients_shouldEscapeUnderscoreCharacterInNamePhrase() throws Exception {
 		
-		Patient patient2 = pService.getPatient(2);
+		Patient patient2 = patientService.getPatient(2);
 		PersonName name = new PersonName("_cats", "and", "dogs");
 		patient2.addName(name);
-		pService.savePatient(patient2);
+		patientService.savePatient(patient2);
 		
 		//add a new closely matching name to another patient
-		Patient patient6 = pService.getPatient(6);
+		Patient patient6 = patientService.getPatient(6);
 		PersonName name6 = new PersonName("acats", "and", "dogs");
 		patient6.addName(name6);
 		patient6.getPatientIdentifier().setPreferred(true);
-		pService.savePatient(patient6);
+		patientService.savePatient(patient6);
+
+		updateSearchIndex();
 		
 		//we expect only one matching patient
 		int actualSize = dao.getPatients("_ca", 0, null).size();
@@ -258,17 +293,19 @@ public class PatientDAOTest extends BaseContextSensitiveTest {
 	@Verifies(value = "should escape an asterix character in name phrase", method = "getPatients(String,String,List<QPatientIdentifierType;>,null)")
 	public void getPatients_shouldEscapeAnAsterixCharacterInNamePhrase() throws Exception {
 		
-		Patient patient2 = pService.getPatient(2);
+		Patient patient2 = patientService.getPatient(2);
 		PersonName name = new PersonName("*cats", "and", "dogs");
 		patient2.addName(name);
-		pService.savePatient(patient2);
+		patientService.savePatient(patient2);
 		
 		//add a new closely matching name to another patient
-		Patient patient6 = pService.getPatient(6);
+		Patient patient6 = patientService.getPatient(6);
 		PersonName name6 = new PersonName("acats", "and", "dogs");
 		patient6.addName(name6);
 		patient6.getPatientIdentifier().setPreferred(true);
-		pService.savePatient(patient6);
+		patientService.savePatient(patient6);
+
+		updateSearchIndex();
 		
 		//we expect only one matching patient
 		int actualSize = dao.getPatients("*ca", 0, null).size();
@@ -684,7 +721,9 @@ public class PatientDAOTest extends BaseContextSensitiveTest {
 		Patient patient = patients.get(0);
 		patient.setVoided(true);
 		dao.savePatient(patient);
-		
+
+		updateSearchIndex();
+
 		patients = dao.getPatients("Hornblower3", 0, 11);
 		Assert.assertEquals(0, patients.size());
 	}
@@ -706,7 +745,9 @@ public class PatientDAOTest extends BaseContextSensitiveTest {
 		for (PersonName name : names) {
 			name.setVoided(true);
 		}
-		
+
+		updateSearchIndex();
+
 		dao.savePatient(patient);
 		patients = dao.getPatients("Oloo", 0, 11);
 		Assert.assertEquals(0, patients.size());
@@ -724,7 +765,9 @@ public class PatientDAOTest extends BaseContextSensitiveTest {
 		Patient patient = patients.get(0);
 		patient.setVoided(true);
 		dao.savePatient(patient);
-		
+
+		updateSearchIndex();
+
 		patients = dao.getPatients("Hornblower3", 0, 11);
 		Assert.assertEquals(0, patients.size());
 	}
@@ -739,7 +782,7 @@ public class PatientDAOTest extends BaseContextSensitiveTest {
 		Assert.assertEquals(1, patients.size());
 		
 		Patient patient = patients.get(0);
-		
+
 		Set<PersonName> names = patient.getNames();
 		
 		for (PersonName name : names) {
@@ -747,6 +790,9 @@ public class PatientDAOTest extends BaseContextSensitiveTest {
 		}
 		
 		dao.savePatient(patient);
+
+		updateSearchIndex();
+
 		patients = dao.getPatients("Oloo", 0, 11);
 		Assert.assertEquals(0, patients.size());
 	}
@@ -797,7 +843,7 @@ public class PatientDAOTest extends BaseContextSensitiveTest {
 	public void getPatients_shouldGetPatientByFamily2Name_SignatureNo1() throws Exception {
 		List<Patient> patients = dao.getPatients("Senior", 0, 11);
 		
-		Assert.assertEquals(1, patients.size());
+		Assert.assertEquals(2, patients.size());
 		Assert.assertEquals("Bilbo Odilon", patients.get(0).getGivenName());
 	}
 	
@@ -887,7 +933,7 @@ public class PatientDAOTest extends BaseContextSensitiveTest {
 	public void getPatients_shouldGetPatientByShortGivenName_SignatureNo1() throws Exception {
 		List<Patient> patients = dao.getPatients("al", 0, 11);
 		
-		Assert.assertEquals(2, patients.size());
+		Assert.assertEquals(3, patients.size());
 		Assert.assertEquals("al", patients.get(0).getGivenName());
 		Assert.assertEquals("al", patients.get(1).getGivenName());
 		Assert.assertFalse(patients.get(0).getMiddleName().equalsIgnoreCase(patients.get(1).getMiddleName()));
@@ -1314,7 +1360,7 @@ public class PatientDAOTest extends BaseContextSensitiveTest {
 	public void getPatients_shouldGetPatientByShortGivenName_SignatureNo2() throws Exception {
 		List<Patient> patients = dao.getPatients("al", 0, 11);
 		
-		Assert.assertEquals(2, patients.size());
+		Assert.assertEquals(3, patients.size());
 		Assert.assertEquals("al", patients.get(0).getGivenName());
 		Assert.assertEquals("al", patients.get(1).getGivenName());
 		Assert.assertFalse(patients.get(0).getMiddleName().equalsIgnoreCase(patients.get(1).getMiddleName()));
@@ -1980,10 +2026,10 @@ public class PatientDAOTest extends BaseContextSensitiveTest {
 		List<Patient> patients = dao.getPatients("Ben", 0, 11);
 		
 		Assert.assertEquals(4, patients.size());
-		Assert.assertEquals("Alan", patients.get(0).getGivenName());
-		Assert.assertEquals("Ben", patients.get(1).getGivenName());
-		Assert.assertEquals("Adam", patients.get(2).getGivenName());
-		Assert.assertEquals("Benedict", patients.get(3).getGivenName());
+		Assert.assertEquals("Ben", patients.get(0).getGivenName());
+		Assert.assertEquals("Alan", patients.get(1).getGivenName());
+		Assert.assertEquals("Benedict", patients.get(2).getGivenName());
+		Assert.assertEquals("Adam", patients.get(3).getGivenName());
 		
 		patients = dao.getPatients("Ben Frank", 0, 11);
 		
@@ -2122,5 +2168,192 @@ public class PatientDAOTest extends BaseContextSensitiveTest {
 		attributes.add("birthdate");
 		List<Patient> patients = dao.getDuplicatePatientsByAttributes(attributes);
 		Assert.assertEquals(31, patients.size());
+	}
+
+	@Test
+	public void getPatients_shouldFindOnlySearchablePersonAttributes() throws Exception {
+		PersonAttributeType attributeType = personService.getPersonAttributeTypeByName("Birthplace");
+		attributeType.setSearchable(false);
+		personService.savePersonAttributeType(attributeType);
+
+		List<Patient> patients = patientService.getPatients("London");
+		assertThat(patients, is(empty()));
+
+		attributeType = personService.getPersonAttributeTypeByName("Birthplace");
+		attributeType.setSearchable(true);
+		personService.savePersonAttributeType(attributeType);
+
+		patients = patientService.getPatients("London");
+		Patient patient = patientService.getPatient(2);
+		assertThat(patients, contains(patient));
+	}
+
+	@Test
+	public void getPatients_shouldReturnOnlyPatients() throws Exception {
+		Person person = personService.getPerson(501);
+		assertThat(person.getIsPatient(), is(false));
+
+		List<Patient> patients = patientService.getPatients(person.getGivenName());
+		assertThat(patients, is(empty()));
+	}
+
+	@Test
+	public void getPatients_shouldFindIdentifierIgnoringCase() throws Exception {
+		Patient patient = patientService.getPatient(2);
+		PatientIdentifier patientIdentifier = new PatientIdentifier("AS_567", patientService.getPatientIdentifierType(5),
+				locationService.getLocation(1));
+		patient.addIdentifier(patientIdentifier);
+		patientService.savePatient(patient);
+
+		updateSearchIndex();
+
+		List<Patient> patients = patientService.getPatients("as_567");
+		assertThat(patients, contains(patient));
+	}
+
+	@Test
+	@Ignore("Designated for manual runs")
+	public void getPatients_shouldFindPatientsEfficiently() throws Exception {
+		URL givenNamesIn = getClass().getResource("/org/openmrs/api/db/givenNames.csv");
+		List<String> givenNames = FileUtils.readLines(new File(givenNamesIn.toURI()));
+		URL familyNamesIn = getClass().getResource("/org/openmrs/api/db/familyNames.csv");
+		List<String> familyNames = FileUtils.readLines(new File(familyNamesIn.toURI()));
+		List<String> attributes = Arrays.asList("London", "Berlin", "Warsaw", "Paris", "Zurich", "Singapore");
+
+		PatientIdentifierType idType = patientService.getPatientIdentifierTypeByName("Old Identification Number");
+
+		PersonAttributeType attributeType = personService.getPersonAttributeTypeByName("Birthplace");
+		attributeType.setSearchable(true);
+		Context.getPersonService().savePersonAttributeType(attributeType);
+
+		Location location = locationService.getLocation(1);
+		Random random = new Random(100); //set the seed to have repeatable results
+		List<String> generatedPatients = new ArrayList<>();
+		for (int i = 0; i < 20000; i++) {
+			int given = random.nextInt(givenNames.size());
+			int family = random.nextInt(familyNames.size());
+			int attribute = random.nextInt(attributes.size());
+
+			generatedPatients.add((i + 1000) + " " + givenNames.get(given) + " " + familyNames.get(family) + " " + attributes.get(attribute));
+
+			PersonName personName = new PersonName(givenNames.get(given), null, familyNames.get(family));
+			Patient patient = new Patient();
+			patient.setGender("m");
+			patient.addIdentifier(new PatientIdentifier("" + (i + 1000), idType, location));
+			patient.addName(personName);
+			PersonAttribute personAttribute = new PersonAttribute();
+			personAttribute.setAttributeType(attributeType);
+			personAttribute.setValue(attributes.get(attribute));
+			patient.addAttribute(personAttribute);
+			patientService.savePatient(patient);
+
+			if (i % 100 == 0) {
+				System.out.println("Created " + i + " patients!");
+				Context.flushSession();
+				Context.clearSession();
+			}
+		}
+
+		File file = File.createTempFile("generated-patients-", ".csv");
+		FileUtils.writeLines(file, generatedPatients);
+		System.out.println("Dumped generated patients to " + file.getAbsolutePath());
+
+		long time = System.currentTimeMillis();
+		updateSearchIndex();
+		time = System.currentTimeMillis() - time;
+		System.out.println("Indexing took " + time + " ms.");
+
+		patientService.getPatients("Aaaaa"); //get Lucene up to speed...
+
+		time = System.currentTimeMillis();
+		List<Patient> results = patientService.getPatients("Al");
+		time = System.currentTimeMillis() - time;
+		System.out.println("Starts with search for 'Al' name returned " + results.size() + " in " + time + " ms");
+
+		time = System.currentTimeMillis();
+		results = patientService.getPatients("Al", 0, 15);
+		time = System.currentTimeMillis() - time;
+		System.out.println("Starts with search for 'Al' name limited to 15 results returned in " + time + " ms");
+
+		time = System.currentTimeMillis();
+		results = patientService.getPatients("Al Dem");
+		time = System.currentTimeMillis() - time;
+		System.out.println("Starts with search for 'Al Dem' name returned " + results.size() + " in " + time + " ms");
+
+		time = System.currentTimeMillis();
+		results = patientService.getPatients("Al Dem", 0, 15);
+		time = System.currentTimeMillis() - time;
+		System.out.println("Starts with search for 'Al Dem' name limited to 15 results returned in " + time + " ms");
+
+		time = System.currentTimeMillis();
+		results = patientService.getPatients("Jack");
+		time = System.currentTimeMillis() - time;
+		System.out.println("Starts with search for 'Jack' name returned " + results.size() + " in " + time + " ms");
+
+		time = System.currentTimeMillis();
+		results = patientService.getPatients("Jack", 0, 15);
+		time = System.currentTimeMillis() - time;
+		System.out.println("Starts with search for 'Jack' name limited to 15 results returned in " + time + " ms");
+
+		time = System.currentTimeMillis();
+		results = patientService.getPatients("Jack Sehgal");
+		time = System.currentTimeMillis() - time;
+		System.out.println("Starts with search for 'Jack Sehgal' name returned " + results.size() + " in " + time + " ms");
+
+		time = System.currentTimeMillis();
+		results = patientService.getPatients("Jack Sehgal", 0, 15);
+		time = System.currentTimeMillis() - time;
+		System.out.println("Starts with search for 'Jack Sehgal' name limited to 15 results returned in " + time + " ms");
+
+		Context.getAdministrationService().setGlobalProperty(OpenmrsConstants.GLOBAL_PROPERTY_PATIENT_SEARCH_MATCH_MODE,
+				OpenmrsConstants.GLOBAL_PROPERTY_PATIENT_SEARCH_MATCH_ANYWHERE);
+
+		time = System.currentTimeMillis();
+		results = patientService.getPatients("aso");
+		time = System.currentTimeMillis() - time;
+		System.out.println("Anywhere search for 'aso' name returned " + results.size() + " in " + time + " ms");
+
+		time = System.currentTimeMillis();
+		results = patientService.getPatients("aso", 0, 15);
+		time = System.currentTimeMillis() - time;
+		System.out.println("Anywhere search for 'aso' name limited to 15 results returned in " + time + " ms");
+
+		time = System.currentTimeMillis();
+		results = patientService.getPatients("aso os");
+		time = System.currentTimeMillis() - time;
+		System.out.println("Anywhere search for 'aso os' name returned " + results.size() + " in " + time + " ms");
+
+		time = System.currentTimeMillis();
+		results = patientService.getPatients("aso os", 0, 15);
+		time = System.currentTimeMillis() - time;
+		System.out.println("Anywhere search for 'aso os' limited to 15 results returned in " + time + " ms");
+
+		time = System.currentTimeMillis();
+		results = patientService.getPatients("9243");
+		time = System.currentTimeMillis() - time;
+		System.out.println("Exact search for '9243' identifier returned " + results.size() + " in " + time + " ms");
+
+		time = System.currentTimeMillis();
+		results = patientService.getPatients("London");
+		time = System.currentTimeMillis() - time;
+		System.out.println("Exact search for 'London' attribute returned " + results.size() + " in " + time + " ms");
+
+		time = System.currentTimeMillis();
+		results = patientService.getPatients("London", 0, 15);
+		time = System.currentTimeMillis() - time;
+		System.out.println("Exact search for 'London' attribute limited to 15 results returned in " + time + " ms");
+
+		Context.getAdministrationService().setGlobalProperty(OpenmrsConstants.GLOBAL_PROPERTY_PERSON_ATTRIBUTE_SEARCH_MATCH_MODE,
+				OpenmrsConstants.GLOBAL_PROPERTY_PERSON_ATTRIBUTE_SEARCH_MATCH_ANYWHERE);
+
+		time = System.currentTimeMillis();
+		results = patientService.getPatients("uric");
+		time = System.currentTimeMillis() - time;
+		System.out.println("Anywhere search for 'uric' attribute returned " + results.size() + " in " + time + " ms");
+
+		time = System.currentTimeMillis();
+		results = patientService.getPatients("uric", 0, 15);
+		time = System.currentTimeMillis() - time;
+		System.out.println("Anywhere search for 'uric' attribute limited to 15 results returned in " + time + " ms");
 	}
 }

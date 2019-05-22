@@ -7,18 +7,17 @@
  * Copyright (C) OpenMRS Inc. OpenMRS is a registered trademark and the OpenMRS
  * graphic logo is a trademark of OpenMRS Inc.
  */
-package org.openmrs.api.order.exceptions;
+package org.openmrs.annotation;
 
-import org.openmrs.api.APIException;
+import org.junit.Assert;
+import org.junit.Test;
+import org.openmrs.test.BaseContextSensitiveTest;
+import org.openmrs.test.StartModule;
 
-/**
- * Thrown when the order is invalid.
- */
-public class InvalidOrderException extends APIException {
-	
-	public static final long serialVersionUID = 22121219L;
-	
-	public InvalidOrderException(String message) {
-		super(message);
-	}
+@StartModule("org/openmrs/module/include/test1-1.0-SNAPSHOT.omod")
+public class StartModuleAnnotationReuseTest extends BaseContextSensitiveTest {
+  @Test
+  public void shouldPass() {
+    Assert.assertTrue(true);
+  }
 }

@@ -7,18 +7,10 @@
  * Copyright (C) OpenMRS Inc. OpenMRS is a registered trademark and the OpenMRS
  * graphic logo is a trademark of OpenMRS Inc.
  */
-package org.openmrs.api.order.exceptions;
-
-import org.openmrs.api.APIException;
+package org.openmrs.annotation;
 
 /**
- * Thrown when the OrderAlreadyExists.
+ * Test bean which should be only loaded when module 'missingModule' is missing
  */
-public class CannotEditAlreadyExistingOrderException extends APIException {
-	
-	public static final long serialVersionUID = 22121213L;
-	
-	public CannotEditAlreadyExistingOrderException() {
-		super("Order.cannot.edit.existing");
-	}
-}
+@OpenmrsProfile(modules = { "!missingModule" })
+public class OpenmrsProfileWithoutMissingModule {}

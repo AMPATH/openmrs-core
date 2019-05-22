@@ -717,7 +717,7 @@ public interface ConceptService extends OpenmrsService {
 	 * @should throw APIException when mapping to null concept
 	 * @should set value coded name when add synonym is selected
 	 * @should not set value coded name when add concept is selected
-	 * @should fail when adding a duplicate syonymn
+	 * @should fail when adding a duplicate synonym
 	 */
 	@Authorized(PrivilegeConstants.MANAGE_CONCEPTS)
 	public Concept mapConceptProposalToConcept(ConceptProposal cp, Concept mappedConcept, Locale locale) throws APIException;
@@ -827,7 +827,7 @@ public interface ConceptService extends OpenmrsService {
 	public Set<Locale> getLocalesOfConceptNames();
 	
 	/**
-	 * Return a list of concept sources currenly in the database Whether or not to return retired
+	 * Return a list of concept sources currently in the database Whether or not to return retired
 	 * concept sources is decided by the boolean includeRetired param
 	 * 
 	 * @param includeRetired whether or not to include retired sources
@@ -1055,6 +1055,20 @@ public interface ConceptService extends OpenmrsService {
 	 */
 	@Authorized(PrivilegeConstants.GET_CONCEPT_SOURCES)
 	public ConceptSource getConceptSourceByUniqueId(String uniqueId) throws APIException;
+	
+	/**
+	 * Get a ConceptSource by its hl7Code.
+	 *
+	 * @param hl7Code the hl7Code
+	 * @return the concept source matching given hl7Code
+	 * @throws APIException
+	 * @should get concept source with the given hl7Code
+	 * @should return null if no concept source with given hl7Code is found
+	 * @should return null if given an empty string
+	 * @should fail if given null
+	 */
+	@Authorized(PrivilegeConstants.GET_CONCEPT_SOURCES)
+	public ConceptSource getConceptSourceByHL7Code(String hl7Code) throws APIException;
 
 	/**
 	 * Checks if there are any observations (including voided observations) for a concept.
@@ -1172,7 +1186,7 @@ public interface ConceptService extends OpenmrsService {
 	public void updateConceptIndex(Concept concept) throws APIException;
 	
 	/**
-	 * Iterates over all concepts and calls upddateConceptIndexes(Concept concept)
+	 * Iterates over all concepts and calls updateConceptIndexes(Concept concept)
 	 * 
 	 * @throws APIException
 	 * @since 1.8

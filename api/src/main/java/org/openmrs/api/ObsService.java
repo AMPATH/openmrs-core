@@ -73,7 +73,19 @@ public interface ObsService extends OpenmrsService {
 	 */
 	@Authorized(PrivilegeConstants.GET_OBS)
 	public Obs getObsByUuid(String uuid) throws APIException;
-	
+
+	/**
+	 * Get Revision Obs for initial Obs
+	 *
+	 * @param obs
+	 * @return obs or null
+	 * @since 2.1
+	 * @should find revision obs for given valid obs
+	 * @should return null if no revision obs found for given obs
+	 */
+	@Authorized(PrivilegeConstants.GET_OBS)
+	public Obs getRevisionObs(Obs initialObs);
+
 	/**
 	 * Save the given obs to the database. This will move the contents of the given <code>obs</code>
 	 * to the database. This acts as both the initial save and an update kind of save. The returned
@@ -367,18 +379,16 @@ public interface ObsService extends OpenmrsService {
 	
 	/**
 	 * Get a complex observation. If obs.isComplex() is true, then returns an Obs with its
-	 * ComplexData. Otherwise returns a simple Obs. TODO: Possibly remove this method. It is
-	 * confusing because you may have a complexObs, but not want the complexData attached at the
-	 * time. Nevertheless, you may think that this method is necessary to use, when you could just
-	 * call getObs(). This will attach the complexData onto the obs.
-	 * 
+	 * ComplexData. Otherwise returns a simple Obs. 
 	 * @param obsId
 	 * @return Obs with a ComplexData
 	 * @since 1.5
 	 * @should fill in complex data object for complex obs
 	 * @should return normal obs for non complex obs
 	 * @should not fail with null view
+	 * @deprecated as of 2.1.0, use {@link #getObs(Integer)} 
 	 */
+	@Deprecated
 	@Authorized( { PrivilegeConstants.GET_OBS })
 	public Obs getComplexObs(Integer obsId, String view) throws APIException;
 	

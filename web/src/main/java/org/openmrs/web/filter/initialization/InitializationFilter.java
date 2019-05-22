@@ -1582,10 +1582,6 @@ public class InitializationFilter extends StartupFilter {
 									InputStream inData = TestInstallUtil.getResourceInputStream(wizardModel.remoteUrl
 									        + RELEASE_TESTING_MODULE_PATH + "generateTestDataSet.form",
 									    wizardModel.remoteUsername, wizardModel.remotePassword);
-									if (inData == null) {
-										reportError(ErrorMessageConstants.ERROR_DB_IMPORT_TEST_DATA, DEFAULT_PAGE, "");
-										return;
-									}
 									
 									setCompletedPercentage(40);
 									setMessage("Loading imported test data...");
@@ -1602,10 +1598,6 @@ public class InitializationFilter extends StartupFilter {
 									InputStream inModules = TestInstallUtil.getResourceInputStream(wizardModel.remoteUrl
 									        + RELEASE_TESTING_MODULE_PATH + "getModules.htm", wizardModel.remoteUsername,
 									    wizardModel.remotePassword);
-									if (inModules == null) {
-										reportError(ErrorMessageConstants.ERROR_DB_UNABLE_TO_FETCH_MODULES, DEFAULT_PAGE, "");
-										return;
-									}
 									
 									setCompletedPercentage(90);
 									setMessage("Adding imported modules...");
@@ -1785,7 +1777,7 @@ public class InitializationFilter extends StartupFilter {
 									Context.logout();
 								}
 								catch (ContextAuthenticationException ex) {
-									log.info("No need to change admin password.");
+									log.info("No need to change admin password.", ex);
 								}
 							}
 						}

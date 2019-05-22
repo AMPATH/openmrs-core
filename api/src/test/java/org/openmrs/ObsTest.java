@@ -9,13 +9,17 @@
  */
 package org.openmrs;
 
-import org.apache.commons.beanutils.BeanUtils;
-import org.junit.Assert;
-import org.junit.Test;
-import org.openmrs.api.APIException;
-import org.openmrs.obs.ComplexData;
-import org.openmrs.test.Verifies;
-import org.openmrs.util.Reflect;
+import static org.hamcrest.core.Is.is;
+import static org.hamcrest.core.IsNot.not;
+import static org.hamcrest.core.IsNull.nullValue;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertThat;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.lang.reflect.Field;
 import java.sql.Timestamp;
@@ -30,13 +34,13 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import org.apache.commons.beanutils.BeanUtils;
+import org.junit.Assert;
+import org.junit.Test;
+import org.openmrs.api.APIException;
+import org.openmrs.obs.ComplexData;
+import org.openmrs.test.Verifies;
+import org.openmrs.util.Reflect;
 
 /**
  * This class tests all methods that are not getter or setters in the Obs java object TODO: finish
@@ -124,6 +128,10 @@ public class ObsTest {
 			fieldValue = new Person(setAlternateValue ? 10 : 17);
 		} else if (field.getType().equals(ComplexData.class)) {
 			fieldValue = new ComplexData(setAlternateValue ? "some complex data" : "Some other value", new Object());
+		} else if (field.getType().equals(Obs.Interpretation.class)) {
+			fieldValue = setAlternateValue ? Obs.Interpretation.ABNORMAL : Obs.Interpretation.CRITICALLY_ABNORMAL;
+		} else if (field.getType().equals(Obs.Status.class)) {
+			fieldValue = setAlternateValue ? Obs.Status.AMENDED : Obs.Status.PRELIMINARY;
 		} else {
 			fieldValue = field.getType().newInstance();
 		}
@@ -409,7 +417,7 @@ public class ObsTest {
 	@Test
 	public void getGroupMembers_shouldGetAllGroupMembersIfPassedTrueAndNonvoidedIfPassedFalse() throws Exception {
 		Obs parent = new Obs(1);
-		Set<Obs> members = new HashSet<Obs>();
+		Set<Obs> members = new HashSet<>();
 		members.add(new Obs(101));
 		members.add(new Obs(103));
 		Obs voided = new Obs(99);
@@ -944,7 +952,7 @@ public class ObsTest {
 	public void setGroupMembers_shouldNotMarkTheExistingObsAsDirtyWhenTheSetIsChangedFromNullToANonEmptyOne() throws Exception {
 		Obs obs = new Obs(5);
 		assertNull(Obs.class.getDeclaredField("groupMembers").get(obs));
-		Set members = new HashSet<>();
+		Set<Obs> members = new HashSet<>();
 		members.add(new Obs());
 		obs.setGroupMembers(members);
 		assertFalse(obs.isDirty());
@@ -958,7 +966,7 @@ public class ObsTest {
 	public void setGroupMembers_shouldNotMarkNewObsAsDirtyWhenTheSetIsChangedFromNullToANonEmptyOne() throws Exception {
 		Obs obs = new Obs();
 		assertNull(Obs.class.getDeclaredField("groupMembers").get(obs));
-		Set members = new HashSet<>();
+		Set<Obs> members = new HashSet<>();
 		members.add(new Obs());
 		obs.setGroupMembers(members);
 		assertFalse(obs.isDirty());
@@ -972,11 +980,11 @@ public class ObsTest {
 	public void setGroupMembers_shouldNotMarkTheExistingObsAsDirtyWhenTheSetIsReplacedWithAnotherWithDifferentMembers()
 	    throws Exception {
 		Obs obs = new Obs(2);
-		Set members1 = new HashSet<>();
+		Set<Obs> members1 = new HashSet<>();
 		members1.add(new Obs());
 		obs.setGroupMembers(members1);
 		resetObs(obs);
-		Set members2 = new HashSet<>();
+		Set<Obs> members2 = new HashSet<>();
 		members2.add(new Obs());
 		obs.setGroupMembers(members2);
 		assertFalse(obs.isDirty());
@@ -990,11 +998,11 @@ public class ObsTest {
 	public void setGroupMembers_shouldNotMarkTheNewObsAsDirtyWhenTheSetIsReplacedWithAnotherWithDifferentMembers()
 			throws Exception {
 		Obs obs = new Obs();
-		Set members1 = new HashSet<>();
+		Set<Obs> members1 = new HashSet<>();
 		members1.add(new Obs());
 		obs.setGroupMembers(members1);
 		assertFalse(obs.isDirty());
-		Set members2 = new HashSet<>();
+		Set<Obs> members2 = new HashSet<>();
 		members2.add(new Obs());
 		obs.setGroupMembers(members2);
 		assertFalse(obs.isDirty());
@@ -1020,11 +1028,11 @@ public class ObsTest {
 	public void setGroupMembers_shouldNotMarkTheObsAsDirtyWhenTheSetIsReplacedWithAnotherWithSameMembers() throws Exception {
 		Obs obs = new Obs();
 		Obs o = new Obs();
-		Set members1 = new HashSet<>();
+		Set<Obs> members1 = new HashSet<>();
 		members1.add(o);
 		obs.setGroupMembers(members1);
 		resetObs(obs);
-		Set members2 = new HashSet<>();
+		Set<Obs> members2 = new HashSet<>();
 		members2.add(o);
 		obs.setGroupMembers(members2);
 		assertFalse(obs.isDirty());
@@ -1047,5 +1055,52 @@ public class ObsTest {
 
 		assertFalse(obs.isDirty());
 	}
+	
+	@Test
+	public void shouldSetFinalStatusOnNewObsByDefault() throws Exception {
+		Obs obs = new Obs();
+		assertThat(obs.getStatus(), is(Obs.Status.FINAL));
+	}
+	
+	@Test
+	public void newInstance_shouldCopyMostFields() throws Exception {
+		Obs obs = new Obs();
+		obs.setStatus(Obs.Status.PRELIMINARY);
+		obs.setInterpretation(Obs.Interpretation.LOW);
+		obs.setConcept(new Concept());
+		obs.setValueNumeric(1.2);
+		
+		Obs copy = Obs.newInstance(obs);
+		
+		// these fields are not copied
+		assertThat(copy.getObsId(), nullValue());
+		assertThat(copy.getUuid(), not(obs.getUuid()));
+		
+		// other fields are copied
+		assertThat(copy.getConcept(), is(obs.getConcept()));
+		assertThat(copy.getValueNumeric(), is(obs.getValueNumeric()));
+		assertThat(copy.getStatus(), is(obs.getStatus()));
+		assertThat(copy.getInterpretation(), is(obs.getInterpretation()));
+		// TODO test that the rest of the fields are set
+	}
+	
+	@Test
+	public void shouldSupportInterpretationProperty() throws Exception {
+		Obs obs = new Obs();
+		assertThat(obs.getInterpretation(), nullValue());
 
+		obs.setInterpretation(Obs.Interpretation.NORMAL);
+		assertThat(obs.getInterpretation(), is(Obs.Interpretation.NORMAL));
+	}
+	
+	@Test
+	public void setValueBoolean_shouldNotSetValueForNonBooleanConcept() throws Exception {
+		Obs obs = createObs(2);
+		ConceptDatatype dataType = new ConceptDatatype();
+		dataType.setUuid(ConceptDatatype.CODED_UUID);
+		obs.getConcept().setDatatype(dataType);
+		assertNotNull(obs.getValueCoded());
+		obs.setValueBoolean(null);
+		assertNotNull(obs.getValueCoded());
+	}
 }

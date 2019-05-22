@@ -11,6 +11,7 @@ package org.openmrs.api.db.hibernate.search;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -18,9 +19,9 @@ import java.util.Set;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.queries.TermsFilter;
+import org.apache.lucene.queryparser.classic.MultiFieldQueryParser;
 import org.apache.lucene.queryparser.classic.ParseException;
 import org.apache.lucene.queryparser.classic.QueryParser;
-import org.apache.lucene.queryparser.classic.QueryParser.Operator;
 import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.Query;
 import org.hibernate.Session;
@@ -28,6 +29,8 @@ import org.hibernate.search.FullTextQuery;
 import org.hibernate.search.FullTextSession;
 import org.hibernate.search.Search;
 import org.hibernate.search.query.dsl.QueryBuilder;
+import org.openmrs.PersonAttribute;
+import org.openmrs.PersonName;
 import org.openmrs.collection.ListPart;
 
 /**
@@ -37,12 +40,33 @@ import org.openmrs.collection.ListPart;
  */
 public abstract class LuceneQuery<T> extends SearchQuery<T> {
 	
-	private FullTextQuery fullTextQuery;
+	private Set<Set<Term>> includeTerms = new HashSet<>();
 	
-	private Set<Set<Term>> includeTerms = new HashSet<Set<Term>>();
-	
-	private Set<Term> excludeTerms = new HashSet<Term>();
-	
+	private Set<Term> excludeTerms = new HashSet<>();
+
+	private TermsFilter termsFilter;
+
+	private boolean noUniqueTerms = false;
+
+	private Set<Object> skipSameValues;
+
+	boolean useOrQueryParser = false;
+
+	public static <T> LuceneQuery<T> newQuery(final Class<T> type, final Session session, final String query, final Collection<String> fields) {
+		return new LuceneQuery<T>(
+				type, session) {
+
+			@Override
+			protected Query prepareQuery() throws ParseException {
+				if (query.isEmpty()) {
+					return new MatchAllDocsQuery();
+				}
+				return newMultipleFieldQueryParser(fields).parse(query);
+			}
+
+		};
+	}
+
 	/**
 	 * The preferred way to create a Lucene query using the query parser.
 	 * @param type filters on type
@@ -78,10 +102,14 @@ public abstract class LuceneQuery<T> extends SearchQuery<T> {
 	
 	public LuceneQuery(Class<T> type, Session session) {
 		super(session, type);
-		
-		buildQuery();
 	}
-	
+
+	public LuceneQuery<T> useOrQueryParser() {
+		useOrQueryParser = true;
+
+		return this;
+	}
+
 	/**
 	 * Include items with the given value in the specified field.
 	 * <p>
@@ -123,9 +151,6 @@ public abstract class LuceneQuery<T> extends SearchQuery<T> {
 				terms.add(new Term(field, value.toString()));
 			}
 			includeTerms.add(terms);
-			
-			fullTextQuery.enableFullTextFilter("termsFilterFactory").setParameter("includeTerms", includeTerms)
-			        .setParameter("excludeTerms", excludeTerms);
 		}
 		
 		return this;
@@ -162,9 +187,6 @@ public abstract class LuceneQuery<T> extends SearchQuery<T> {
 			for (Object value : values) {
 				excludeTerms.add(new Term(field, value.toString()));
 			}
-			
-			fullTextQuery.enableFullTextFilter("termsFilterFactory").setParameter("includeTerms", includeTerms)
-			        .setParameter("excludeTerms", excludeTerms);
 		}
 		
 		return this;
@@ -208,10 +230,34 @@ public abstract class LuceneQuery<T> extends SearchQuery<T> {
 	protected QueryParser newQueryParser() {
 		Analyzer analyzer = getFullTextSession().getSearchFactory().getAnalyzer(getType());
 		QueryParser queryParser = new QueryParser(null, analyzer);
-		queryParser.setDefaultOperator(Operator.AND);
+
+		setDefaultOperator(queryParser);
 		return queryParser;
 	}
-	
+
+
+	protected MultiFieldQueryParser newMultipleFieldQueryParser(Collection<String> fields) {
+		Analyzer analyzer;
+		if (getType().isAssignableFrom(PersonName.class) || getType().isAssignableFrom(PersonAttribute.class)) {
+			analyzer = getFullTextSession().getSearchFactory().getAnalyzer(LuceneAnalyzers.EXACT_ANALYZER);
+		} else {
+			analyzer = getFullTextSession().getSearchFactory().getAnalyzer(getType());
+		}
+		MultiFieldQueryParser queryParser = new MultiFieldQueryParser(fields.toArray(new String[fields.size()]), analyzer);
+
+		setDefaultOperator(queryParser);
+		return queryParser;
+	}
+
+	private void setDefaultOperator(QueryParser queryParser) {
+		if (useOrQueryParser) {
+			queryParser.setDefaultOperator(QueryParser.Operator.OR);
+		} else {
+			queryParser.setDefaultOperator(QueryParser.Operator.AND);
+		}
+	}
+
+
 	/**
 	 * Gives you access to the full text session.
 	 * 
@@ -224,58 +270,102 @@ public abstract class LuceneQuery<T> extends SearchQuery<T> {
 	/**
 	 * Skip elements, values of which repeat in the given field.
 	 * <p>
-	 * Only the first element will be included in the results.
+	 * Only first elements will be included in the results.
 	 * <p>
-	 * <b>Note:</b> For performance reasons you should call this method as last when constructing a
-	 * query. When called it will project the query and create a filter to eliminate duplicates.
+	 * <b>Note:</b> This method must be called as last when constructing a query. When called it
+	 * will project the query and create a filter to eliminate duplicates.
 	 * 
 	 * @param field
 	 * @return this
 	 */
-	public LuceneQuery<T> skipSame(String field) {
-		String idPropertyName = getSession().getSessionFactory().getClassMetadata(getType()).getIdentifierPropertyName();
-		
-		List<Object> documents = listProjection(idPropertyName, field);
+	public LuceneQuery<T> skipSame(String field){
+		return skipSame(field, null);
+	}
 
-		TermsFilter termsFilter = null;
+	/**
+	 * Skip elements, values of which repeat in the given field.
+	 * <p>
+	 * Only first elements will be included in the results.
+	 * <p>
+	 * <b>Note:</b> This method must be called as last when constructing a query. When called it
+	 * will project the query and create a filter to eliminate duplicates.
+	 *
+	 * @param field
+	 * @param luceneQuery results of which should be skipped too. It works only for queries, which called skipSame as well.
+	 * @return this
+	 */
+	public LuceneQuery<T> skipSame(String field, LuceneQuery<?> luceneQuery){
+		String idPropertyName = getSession().getSessionFactory().getClassMetadata(getType()).getIdentifierPropertyName();
+
+		FullTextQuery query = buildQuery();
+		query.setProjection(idPropertyName, field);
+		List<Object[]> documents = query.list();
+
+		skipSameValues = new HashSet<>();
+		if (luceneQuery != null) {
+			if (luceneQuery.skipSameValues == null) {
+				throw new IllegalArgumentException("The skipSame method must be called on the given luceneQuery before calling this method.");
+			}
+			skipSameValues.addAll(luceneQuery.skipSameValues);
+		}
+
+		termsFilter = null;
 		if (!documents.isEmpty()) {
-			Set<Object> uniqueFieldValues = new HashSet<Object>();
-			List<Term> terms = new ArrayList<Term>();
-			for (Object document : documents) {
-				Object[] row = (Object[]) document;
-				if (uniqueFieldValues.add(row[1])) {
+			List<Term> terms = new ArrayList<>();
+			for (Object[] row : documents) {
+				if (skipSameValues.add(row[1])) {
 					terms.add(new Term(idPropertyName, row[0].toString()));
 				}
 			}
-			termsFilter = new TermsFilter(terms);
+			if (!terms.isEmpty()) {
+				termsFilter = new TermsFilter(terms);
+			} else {
+				noUniqueTerms = true;
+			}
 		}
-		
-		if (termsFilter != null) {
-			buildQuery();
-			fullTextQuery.setFilter(termsFilter);
-		}
-		
+
 		return this;
 	}
 	
 	@Override
 	public T uniqueResult() {
+		if (noUniqueTerms) {
+			return null;
+		}
+
 		@SuppressWarnings("unchecked")
-		T result = (T) fullTextQuery.uniqueResult();
+		T result = (T) buildQuery().uniqueResult();
 		
 		return result;
 	}
 	
 	@Override
 	public List<T> list() {
+		//debug
+		/*FullTextQuery fullTextQuery = buildQuery();
+		fullTextQuery.setProjection(
+				FullTextQuery.DOCUMENT_ID,
+				FullTextQuery.EXPLANATION,
+				FullTextQuery.THIS );
+		@SuppressWarnings("unchecked") List<Object[]> results = fullTextQuery.list();*/
+
+		if (noUniqueTerms) {
+			return Collections.emptyList();
+		}
+
 		@SuppressWarnings("unchecked")
-		List<T> list = fullTextQuery.list();
+		List<T> list = buildQuery().list();
 		
 		return list;
 	}
 	
 	@Override
 	public ListPart<T> listPart(Long firstResult, Long maxResults) {
+		if (noUniqueTerms) {
+			return ListPart.newListPart(Collections.emptyList(), firstResult, maxResults, 0L, true);
+		}
+
+		FullTextQuery fullTextQuery = buildQuery();
 		applyPartialResults(fullTextQuery, firstResult, maxResults);
 		
 		@SuppressWarnings("unchecked")
@@ -290,38 +380,52 @@ public abstract class LuceneQuery<T> extends SearchQuery<T> {
 	 */
 	@Override
 	public long resultSize() {
-		return fullTextQuery.getResultSize();
+		if (noUniqueTerms) {
+			return 0;
+		}
+
+		return buildQuery().getResultSize();
 	}
 	
-	public List<Object> listProjection(String... fields) {
+	public List<Object[]> listProjection(String... fields) {
+		if (noUniqueTerms) {
+			return Collections.emptyList();
+		}
+
+		FullTextQuery fullTextQuery = buildQuery();
 		fullTextQuery.setProjection(fields);
 		
 		@SuppressWarnings("unchecked")
-		List<Object> list = fullTextQuery.list();
-		
+		List<Object[]> list = fullTextQuery.list();
+
 		return list;
 	}
 	
-	public ListPart<Object> listPartProjection(Long firstResult, Long maxResults, String... fields) {
+	public ListPart<Object[]> listPartProjection(Long firstResult, Long maxResults, String... fields) {
+		if (noUniqueTerms) {
+			return ListPart.newListPart(Collections.emptyList(), firstResult, maxResults, 0L, true);
+		}
+
+		FullTextQuery fullTextQuery = buildQuery();
 		applyPartialResults(fullTextQuery, firstResult, maxResults);
 		
 		fullTextQuery.setProjection(fields);
 		
 		@SuppressWarnings("unchecked")
-		List<Object> list = fullTextQuery.list();
+		List<Object[]> list = fullTextQuery.list();
 		
 		return ListPart.newListPart(list, firstResult, maxResults, Long.valueOf(fullTextQuery.getResultSize()),
 		    !fullTextQuery.hasPartialResults());
 		
 	}
 	
-	public ListPart<Object> listPartProjection(Integer firstResult, Integer maxResults, String... fields) {
+	public ListPart<Object[]> listPartProjection(Integer firstResult, Integer maxResults, String... fields) {
 		Long first = (firstResult != null) ? Long.valueOf(firstResult) : null;
 		Long max = (maxResults != null) ? Long.valueOf(maxResults) : null;
 		return listPartProjection(first, max, fields);
 	}
 	
-	private void buildQuery() {
+	private FullTextQuery buildQuery() {
 		Query query;
 		try {
 			query = prepareQuery();
@@ -330,8 +434,16 @@ public abstract class LuceneQuery<T> extends SearchQuery<T> {
 			throw new IllegalStateException("Invalid query", e);
 		}
 		
-		fullTextQuery = getFullTextSession().createFullTextQuery(query, getType());
+		FullTextQuery fullTextQuery = getFullTextSession().createFullTextQuery(query, getType());
+
+		fullTextQuery.enableFullTextFilter("termsFilterFactory").setParameter("includeTerms", includeTerms)
+				.setParameter("excludeTerms", excludeTerms);
+
+		fullTextQuery.setFilter(termsFilter);
+
 		adjustFullTextQuery(fullTextQuery);
+
+		return fullTextQuery;
 	}
 	
 	private void applyPartialResults(FullTextQuery fullTextQuery, Long firstResult, Long maxResults) {

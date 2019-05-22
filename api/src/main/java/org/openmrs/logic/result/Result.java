@@ -30,8 +30,6 @@ import org.openmrs.logic.LogicException;
  * results and has some prior knowledge of the objects returned by a particular rule can more easily
  * get to the full-featured objects instead of the simplified values in the date-value pairs.<br>
  * <br>
- * TODO: eliminate unnecessary methods (toDatetime(), getDatetime(), and getDate() should all do the
- * same thing)<br>
  * TODO: better support/handling of NULL_RESULT
  */
 public class Result extends ArrayList<Result> {
@@ -41,7 +39,7 @@ public class Result extends ArrayList<Result> {
 	/**
 	 * Core datatypes for a result. Each result is one of these datatypes, but can be easily coerced
 	 * into the other datatypes. To promote flexibility and maximize re-usability of logic rules,
-	 * the value of a result can be controlled individually for each datatype &mdash; i.e., specfic
+	 * the value of a result can be controlled individually for each datatype &mdash; i.e., specific
 	 * datatype representations of a single result can be overridden. For example, a result could
 	 * have a <em>numeric</em> value of 0.15 and its text value could be overridden to be
 	 * "15 percent" or "Fifteen percent."
@@ -111,7 +109,7 @@ public class Result extends ArrayList<Result> {
 	 * @should not fail with empty list
 	 */
 	public Result(List<Result> list) {
-		if (!(list == null || list.size() < 1)) {
+		if (!(list == null || list.isEmpty())) {
 			this.addAll(list);
 		}
 	}
@@ -636,7 +634,7 @@ public class Result extends ArrayList<Result> {
 					return valueText;
 			}
 		}
-		StringBuffer s = new StringBuffer();
+		StringBuilder s = new StringBuilder();
 		for (Result r : this) {
 			if (s.length() > 0) {
 				s.append(",");
@@ -760,17 +758,6 @@ public class Result extends ArrayList<Result> {
 		return new Result(uniqueList);
 	}
 	
-	//TODO rewrite this method
-	//
-	//	/**
-	//	 * @see java.lang.Object#hashCode()
-	//	 */
-	//	public int hashCode() {
-	//		int hashCode = 49867; // some random number
-	//		hashCode += this.hashCode();
-	//	
-	//		return hashCode;
-	//	}
 	
 	/**
 	 * @see java.lang.Object#equals(java.lang.Object)

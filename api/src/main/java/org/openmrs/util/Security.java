@@ -49,7 +49,7 @@ public class Security {
 	 * string-to-hash is usually of the form password + salt. <br>
 	 * <br>
 	 * This should be used so that this class can compare against the new correct hashing algorithm
-	 * and the old incorrect hashin algorithm.
+	 * and the old incorrect hashing algorithm.
 	 *
 	 * @param hashedPassword a stored password that has been hashed previously
 	 * @param passwordToHash a string to encode/hash and compare to hashedPassword
@@ -70,6 +70,17 @@ public class Security {
 	}
 	
 	/**
+	 * Gets the error message for failing to encode password when the given algorithm was not found
+	 * @param algo algorithm used for encoding
+	 * @return the error message string with algorithm type used
+	 */
+	private static String getPasswordEncodeFailMessage(String algo) {
+		String errorMessage = "Can't encode password because the given algorithm: " + algo + " was not found! (fail)";
+		return errorMessage;
+	}
+	
+	/**
+	/**
 	 * This method will hash <code>strToEncode</code> using the preferred algorithm. Currently,
 	 * OpenMRS's preferred algorithm is hard coded to be SHA-512.
 	 *
@@ -87,7 +98,7 @@ public class Security {
 		}
 		catch (NoSuchAlgorithmException e) {
 			// Yikes! Can't encode password...what to do?
-			log.error("Can't encode password because the given algorithm: " + algorithm + "was not found! (fail)", e);
+			log.error(getPasswordEncodeFailMessage(algorithm), e);
 			throw new APIException("system.cannot.find.password.encryption.algorithm", null, e);
 		}
 		catch (UnsupportedEncodingException e) {
@@ -112,7 +123,7 @@ public class Security {
 		}
 		catch (NoSuchAlgorithmException e) {
 			// Yikes! Can't encode password...what to do?
-			log.error("Can't encode password because the given algorithm: " + algorithm + "was not found! (fail)", e);
+			log.error(getPasswordEncodeFailMessage(algorithm), e);
 			throw new APIException("system.cannot.find.encryption.algorithm", null, e);
 		}
 		catch (UnsupportedEncodingException e) {
@@ -128,7 +139,7 @@ public class Security {
 	 * @return Hexidecimal based string
 	 */
 	private static String hexString(byte[] block) {
-		StringBuffer buf = new StringBuffer();
+		StringBuilder buf = new StringBuilder();
 		char[] hexChars = { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f' };
 		int len = block.length;
 		int high = 0;
@@ -160,7 +171,7 @@ public class Security {
 		}
 		catch (NoSuchAlgorithmException e) {
 			// Yikes! Can't encode password...what to do?
-			log.error("Can't encode password because the given algorithm: " + algorithm + "was not found! (fail)", e);
+			log.error(getPasswordEncodeFailMessage(algorithm), e);
 			throw new APIException("system.cannot.find.encryption.algorithm", null, e);
 		}
 		catch (UnsupportedEncodingException e) {
@@ -183,7 +194,7 @@ public class Security {
 		if (b == null || b.length < 1) {
 			return "";
 		}
-		StringBuffer s = new StringBuffer();
+		StringBuilder s = new StringBuilder();
 		for (int i = 0; i < b.length; i++) {
 			s.append(Integer.toHexString(b[i] & 0xFF));
 		}

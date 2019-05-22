@@ -320,7 +320,7 @@ public class AdministrationServiceTest extends BaseContextSensitiveTest {
 		String newKey = "new_gp_key";
 		
 		String initialValue = adminService.getGlobalProperty(newKey);
-		Assert.assertNull(initialValue); // ensure gp doesnt exist before test
+		Assert.assertNull(initialValue); // ensure gp doesn't exist before test
 		adminService.setGlobalProperty(newKey, "new_key");
 		
 		String newValue = adminService.getGlobalProperty(newKey);
@@ -474,7 +474,7 @@ public class AdministrationServiceTest extends BaseContextSensitiveTest {
 	@Verifies(value = "should return all global properties in the database", method = "getAllGlobalProperties()")
 	public void getAllGlobalProperties_shouldReturnAllGlobalPropertiesInTheDatabase() throws Exception {
 		executeDataSet(ADMIN_INITIAL_DATA_XML);
-		Assert.assertEquals(20, Context.getAdministrationService().getAllGlobalProperties().size());
+		Assert.assertEquals(21, Context.getAdministrationService().getAllGlobalProperties().size());
 	}
 	
 	/**
@@ -546,9 +546,9 @@ public class AdministrationServiceTest extends BaseContextSensitiveTest {
 		executeDataSet(ADMIN_INITIAL_DATA_XML);
 		AdministrationService as = Context.getAdministrationService();
 		
-		Assert.assertEquals(20, as.getAllGlobalProperties().size());
+		Assert.assertEquals(21, as.getAllGlobalProperties().size());
 		as.purgeGlobalProperty(as.getGlobalPropertyObject("a_valid_gp_key"));
-		Assert.assertEquals(19, as.getAllGlobalProperties().size());
+		Assert.assertEquals(20, as.getAllGlobalProperties().size());
 	}
 	
 	/**
@@ -756,7 +756,7 @@ public class AdministrationServiceTest extends BaseContextSensitiveTest {
 	
 	/**
 	 * @see AdministrationService#getSearchLocales(User)
-	 * @verifies include currently selected full locale and langugage
+	 * @verifies include currently selected full locale and language
 	 */
 	@Test
 	public void getSearchLocales_shouldIncludeCurrentlySelectedFullLocaleAndLangugage() throws Exception {

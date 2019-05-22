@@ -167,7 +167,6 @@ public class ADTA28Handler implements Application {
 			Context.getPatientService().savePatient(patient);
 			
 		} else {
-			// TODO: Add a global property that enables different behavior here.
 			log.info("Ignoring ADT_A28 message because patient (" + patientId + ") already exists.");
 		}
 		
@@ -255,7 +254,7 @@ public class ADTA28Handler implements Application {
 				continue;
 			}
 		}
-		if (goodIdentifiers.size() == 0) {
+		if (goodIdentifiers.isEmpty()) {
 			throw new HL7Exception("PID segment has no recognizable patient identifiers.");
 		}
 		patient.addIdentifiers(goodIdentifiers);

@@ -9,9 +9,11 @@
  */
 package org.openmrs.api;
 
+import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 
 import java.util.ArrayList;
@@ -254,6 +256,23 @@ public class ProgramWorkflowServiceTest extends BaseContextSensitiveTest {
 		Assert.assertNull(Context.getProgramWorkflowService().getProgramByUuid("some invalid uuid"));
 	}
 	
+	@Test
+	public void getState_shouldGetStateAssociatedWithGivenIdIfWorkflowStateIdExists() {
+		
+		final Integer EXISTING_WORKFLOW_STATE_ID = 1;
+		
+		ProgramWorkflowState state = pws.getState(EXISTING_WORKFLOW_STATE_ID);
+		
+		assertNotNull("ProgramWorkflowState not found", state);
+		assertThat(state.getId(), is(EXISTING_WORKFLOW_STATE_ID));
+	}
+	
+	@Test
+	public void getState_shouldReturnNullIfGivenWorkflowStateIdDoesNotExists() {
+		
+		assertNull(pws.getState(99999));
+	}
+	
 	/**
 	 * @see ProgramWorkflowService#getStateByUuid(String)
 	 */
@@ -272,6 +291,23 @@ public class ProgramWorkflowServiceTest extends BaseContextSensitiveTest {
 	@Verifies(value = "should return null if no object found with given uuid", method = "getStateByUuid(String)")
 	public void getStateByUuid_shouldReturnNullIfNoObjectFoundWithGivenUuid() throws Exception {
 		Assert.assertNull(Context.getProgramWorkflowService().getStateByUuid("some invalid uuid"));
+	}
+	
+	@Test
+	public void getWorkflow_shouldGetWorkflowAssociatedWithGivenIdIfWorkflowIdExists() {
+		
+		final Integer EXISTING_WORKFLOW_ID = 1;
+		
+		ProgramWorkflow workflow = pws.getWorkflow(EXISTING_WORKFLOW_ID);
+		
+		assertNotNull("ProgramWorkflow not found", workflow);
+		assertThat(workflow.getId(), is(EXISTING_WORKFLOW_ID));
+	}
+	
+	@Test
+	public void getWorkflow_shouldReturnNullIfGivenWorkflowIdDoesNotExists() {
+		
+		assertNull(pws.getWorkflow(99999));
 	}
 	
 	/**
@@ -324,12 +360,13 @@ public class ProgramWorkflowServiceTest extends BaseContextSensitiveTest {
 		Set<ProgramWorkflowState> sortedStates = program.getSortedStates();
 		int x = 1;
 		for (ProgramWorkflowState state : sortedStates) {
-			if (x == 1)
+			if (x == 1) {
 				Assert.assertEquals("Group 2", state.getConcept().getName(Context.getLocale()).getName());
-			else if (x == 2)
+			} else if (x == 2) {
 				Assert.assertEquals("Group 10", state.getConcept().getName(Context.getLocale()).getName());
-			else
+			} else {
 				Assert.fail("Wha?!");
+			}
 			x++;
 		}
 	}

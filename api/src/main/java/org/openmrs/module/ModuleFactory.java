@@ -187,15 +187,18 @@ public class ModuleFactory {
 	public static void loadModules(List<File> modulesToLoad) {
 		// loop over the modules and load all the modules that we can
 		for (File f : modulesToLoad) {
-			// ignore .svn folder and the like
-			if (!f.getName().startsWith(".")) {
-				try {
-					Module mod = loadModule(f, true); // last module loaded wins
-					log.debug("Loaded module: " + mod + " successfully");
+			if (f.exists()) {
+				// ignore .svn folder and the like
+				if (!f.getName().startsWith(".")) {
+					try {
+						Module mod = loadModule(f, true); // last module loaded wins
+						log.debug("Loaded module: " + mod + " successfully");
+					} catch (Exception e) {
+						log.debug("Unable to load file in module directory: " + f + ". Skipping file.", e);
+					}
 				}
-				catch (Exception e) {
-					log.debug("Unable to load file in module directory: " + f + ". Skipping file.", e);
-				}
+			} else {
+				log.debug("Could not find file in module directory: " + f);
 			}
 		}
 		
@@ -224,7 +227,7 @@ public class ModuleFactory {
 	public static void startModules() {
 		
 		// loop over and try starting each of the loaded modules
-		if (getLoadedModules().size() > 0) {
+		if (!getLoadedModules().isEmpty()) {
 			
 			List<Module> modules = getModulesThatShouldStart();
 			
@@ -613,8 +616,9 @@ public class ModuleFactory {
 					continue;
 				}
 				
-				if (!mod.isStarted())
+				if (!mod.isStarted()) {
 					startModule(mod);
+				}
 			}
 			
 			if (missingModules > 0) {
@@ -622,7 +626,9 @@ public class ModuleFactory {
 				log.error(message);
 				module.setStartupErrorMessage(message);
 				notifySuperUsersAboutModuleFailure(module);
-				return module; // instead of return null, i realized that Daemon.startModule() always returns a Module object,irrespective of whether the startup succeeded  
+				// instead of return null, i realized that Daemon.startModule() always returns a Module
+				// object,irrespective of whether the startup succeeded
+				return module;   
 			}
 		}
 		return Daemon.startModule(module, isOpenmrsStartup, applicationContext);
@@ -789,7 +795,7 @@ public class ModuleFactory {
 				// make sure they are added to the database
 				// (Unfortunately, placing the call here will duplicate work
 				// done at initial app startup)
-				if (module.getPrivileges().size() > 0 || module.getGlobalProperties().size() > 0) {
+				if (!module.getPrivileges().isEmpty() || !module.getGlobalProperties().isEmpty()) {
 					log.debug("Updating core dataset");
 					Context.checkCoreDataset();
 					// checkCoreDataset() currently doesn't throw an error. If
@@ -928,7 +934,6 @@ public class ModuleFactory {
 			}
 			catch (ClassNotFoundException e) {
 				log.warn("Could not load advice point: " + advice.getPoint(), e);
-				//throw new ModuleException("Could not load advice point: " + advice.getPoint(), e);
 			}
 		}
 	}
@@ -1008,7 +1013,7 @@ public class ModuleFactory {
 	}
 	
 	/**
-	 * Execute all unrun changeSets in liquibase.xml for the given module
+	 * Execute all not run changeSets in liquibase.xml for the given module
 	 * 
 	 * @param module the module being executed on
 	 */
@@ -1146,11 +1151,9 @@ public class ModuleFactory {
 			List<Module> startedModulesCopy = new ArrayList<Module>();
 			startedModulesCopy.addAll(getStartedModules());
 			for (Module dependentModule : startedModulesCopy) {
-				if (dependentModule != null && !dependentModule.equals(mod)) {
-					if (dependentModule.getRequiredModules() != null && dependentModule.getRequiredModules().contains(modulePackage)) {
-						dependentModulesStopped.add(dependentModule);
-						dependentModulesStopped.addAll(stopModule(dependentModule, skipOverStartedProperty, isFailedStartup));
-					}
+				if (dependentModule != null && !dependentModule.equals(mod) && isModuleRequiredByAnother(dependentModule, modulePackage)) {
+					dependentModulesStopped.add(dependentModule);
+					dependentModulesStopped.addAll(stopModule(dependentModule, skipOverStartedProperty, isFailedStartup));
 				}
 			}
 			
@@ -1201,10 +1204,6 @@ public class ModuleFactory {
 						String extId = ext.getExtensionId();
 						try {
 							List<Extension> tmpExtensions = getExtensions(extId);
-							if (tmpExtensions == null) {
-								tmpExtensions = new Vector<Extension>();
-							}
-							
 							tmpExtensions.remove(ext);
 							getExtensionMap().put(extId, tmpExtensions);
 						}
@@ -1267,7 +1266,18 @@ public class ModuleFactory {
 		
 		return dependentModulesStopped;
 	}
-	
+
+	/**
+	 * Checks if a module is required by another
+     *
+	 * @param dependentModule the module whose required modules are to be checked
+	 * @param modulePackage the package of the module to check if required by another
+	 * @return true if the module is required, else false
+	 */
+	private static boolean isModuleRequiredByAnother(Module dependentModule, String modulePackage) {
+		return dependentModule.getRequiredModules() != null && dependentModule.getRequiredModules().contains(modulePackage);
+	}
+
 	private static ModuleClassLoader removeClassLoader(Module mod) {
 		getModuleClassLoaderMap(); // create map if it is null
 		if (!moduleClassLoaders.containsKey(mod)) {

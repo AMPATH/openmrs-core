@@ -131,7 +131,7 @@ public class ModuleUtil {
 		// some debugging info
 		if (log.isDebugEnabled()) {
 			Collection<Module> modules = ModuleFactory.getStartedModules();
-			if (modules == null || modules.size() == 0) {
+			if (modules == null || modules.isEmpty()) {
 				log.debug("No modules loaded");
 			} else {
 				log.debug("Found and loaded " + modules.size() + " module(s)");
@@ -711,7 +711,7 @@ public class ModuleUtil {
 					}
 					http.disconnect();
 					// Redirection should be allowed only for HTTP and HTTPS
-					// and should be limited to 5 redirections at most.
+					// and should be limited to 5 redirects at most.
 					if (target == null || !("http".equals(target.getProtocol()) || "https".equals(target.getProtocol()))
 					        || redirects >= 5) {
 						throw new SecurityException("illegal URL redirect");
@@ -800,7 +800,7 @@ public class ModuleUtil {
 					log.debug("Update for mod: " + mod.getModuleId() + " compareVersion result: "
 					        + compareVersion(mod.getVersion(), parser.getCurrentVersion()));
 					
-					// check the udpate.rdf version against the installed version
+					// check the update.rdf version against the installed version
 					if (compareVersion(mod.getVersion(), parser.getCurrentVersion()) < 0) {
 						if (mod.getModuleId().equals(parser.getModuleId())) {
 							mod.setDownloadURL(parser.getDownloadURL());
@@ -971,7 +971,7 @@ public class ModuleUtil {
 		mandatoryModuleIds.removeAll(startedModuleIds);
 		
 		// any module ids left in the list are not started
-		if (mandatoryModuleIds.size() > 0) {
+		if (!mandatoryModuleIds.isEmpty()) {
 			throw new MandatoryModuleException(mandatoryModuleIds);
 		}
 	}

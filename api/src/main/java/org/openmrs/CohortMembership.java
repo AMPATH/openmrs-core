@@ -9,76 +9,91 @@
  */
 package org.openmrs;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-
 import java.util.Date;
 
+import org.openmrs.util.OpenmrsUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+/**
+ * @since 2.1.0
+ */
 public class CohortMembership extends BaseOpenmrsData implements Comparable<CohortMembership> {
 	
 	public static final long serialVersionUID = 0L;
 	
-	protected static final Log log = LogFactory.getLog(CohortMembership.class);
-
+	protected static final Logger log = LoggerFactory.getLogger(CohortMembership.class);
+	
 	private Integer cohortMemberId;
 	
 	private Cohort cohort;
 	
-	private Patient patient;
+	private Integer patientId;
 	
 	private Date startDate;
 	
 	private Date endDate;
-
+	
 	// Constructor
 	public CohortMembership() {
 	}
-
-	public CohortMembership(Patient patient, Date startDate) {
-		this.patient = patient;
+	
+	public CohortMembership(Integer patientId, Date startDate) {
+		this.patientId = patientId;
 		this.startDate = startDate;
 	}
-
-	public CohortMembership(Patient patient) {
-		this(patient, new Date());
+	
+	public CohortMembership(Integer patientId) {
+		this(patientId, new Date());
 	}
 	
-	public boolean isMemberActive() {
-		return this.getStartDate() != null && this.getStartDate().before(new Date()) && this.getEndDate() == null;
+	/**
+	 * Compares asOfDate to [startDate, endDate], inclusive of both endpoints.
+	 * @param asOfDate date to compare if membership is active or inactive
+	 * @return boolean true/false if membership is active/inactive
+	 */
+	public boolean isActive(Date asOfDate) {
+		Date date = asOfDate == null ? new Date() : asOfDate;
+		return !this.getVoided() && OpenmrsUtil.compare(startDate, date) <= 0
+				&& OpenmrsUtil.compareWithNullAsLatest(date, endDate) <= 0;
 	}
-
+	
+	public boolean isActive() {
+		return isActive(null);
+	}
+	
 	@Override
 	public Integer getId() {
 		return getCohortMemberId();
 	}
-
+	
 	@Override
 	public void setId(Integer id) {
 		setCohortMemberId(id);
 	}
-
+	
 	public Integer getCohortMemberId() {
 		return cohortMemberId;
 	}
-
+	
 	public void setCohortMemberId(Integer cohortMemberId) {
 		this.cohortMemberId = cohortMemberId;
 	}
-
+	
 	public Cohort getCohort() {
 		return cohort;
 	}
 	
-	protected void setCohort(Cohort cohort) {
+	public void setCohort(Cohort cohort) {
 		this.cohort = cohort;
 	}
 	
-	public Patient getPatient() {
-		return patient;
+	public Integer getPatientId() {
+		return patientId;
 	}
 	
-	public void setPatient(Patient patient) {
-		this.patient = patient;
+	public void setPatientId(Integer patientId) {
+		this.patientId = patientId;
 	}
 	
 	public Date getStartDate() {
@@ -93,12 +108,44 @@ public class CohortMembership extends BaseOpenmrsData implements Comparable<Coho
 		return endDate;
 	}
 	
+	/**
+	 * OpenMRS treats a membership as active from its startDate to endDate <em>inclusive</em> of both.
+	 * The underlying database field stores a date+time, so in the common case (where you don't care about the time of day
+	 * that cohort membership ended) you want to set the time component to 23:59:59.
+	 * @param endDate
+	 */
 	public void setEndDate(Date endDate) {
 		this.endDate = endDate;
 	}
-
+	
+	/**
+	 * Sorts by following fields, in order:
+	 * <ol>
+	 *     <li>voided (voided memberships sort last)</li>
+	 *     <li>endDate descending (so ended memberships are towards the end, and the older the more towards the end</li>
+	 *     <li>startDate descending (so started more recently is towards the front)</li>
+	 *     <li>patientId ascending (intuitive and consistent tiebreaker for client code)</li>
+	 *     <li>uuid ascending (just so we have a final consistent tie breaker)</li>
+	 * </ol>
+	 *
+	 * @param o other membership to compare this to
+	 * @return
+	 */
 	@Override
 	public int compareTo(CohortMembership o) {
-		return this.getPatient().getPatientId() - o.getPatient().getPatientId();
+		int ret = this.getVoided().compareTo(o.getVoided());
+		if (ret == 0) {
+			ret = -OpenmrsUtil.compareWithNullAsLatest(this.getEndDate(), o.getEndDate());
+		}
+		if (ret == 0) {
+			ret = -OpenmrsUtil.compareWithNullAsEarliest(this.getStartDate(), o.getStartDate());
+		}
+		if (ret == 0) {
+			ret = this.getPatientId().compareTo(o.getPatientId());
+		}
+		if (ret == 0) {
+			ret = this.getUuid().compareTo(o.getUuid());
+		}
+		return ret;
 	}
 }

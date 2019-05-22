@@ -11,7 +11,6 @@ package org.openmrs.api.cache;
 
 
 import net.sf.ehcache.config.CacheConfiguration;
-import net.sf.ehcache.config.PersistenceConfiguration;
 import org.apache.commons.beanutils.BeanUtils;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
@@ -30,7 +29,7 @@ import java.util.Set;
 public class CachePropertiesUtil {
 
     /**
-     * This method look for all apiCacheConfig.properties file located in cacheConfig folder in classpath
+     * This method looks for all apiCacheConfig.properties file located in cacheConfig folder in classpath
      * @return list of CacheConfiguration objects
      */
     public static List<CacheConfiguration> getCacheConfigurations(){

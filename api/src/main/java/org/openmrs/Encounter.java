@@ -19,12 +19,12 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.Deque;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * An Encounter represents one visit or interaction of a patient with a healthcare worker. Every
@@ -47,8 +47,6 @@ public class Encounter extends BaseOpenmrsData {
 	
 	private Patient patient;
 	
-	private Integer patientId;
-	
 	private Location location;
 	
 	private Form form;
@@ -63,7 +61,7 @@ public class Encounter extends BaseOpenmrsData {
 	private Visit visit;
 	
 	@DisableHandlers(handlerTypes = { VoidHandler.class })
-	private Set<EncounterProvider> encounterProviders = new LinkedHashSet<EncounterProvider>();
+	private Set<EncounterProvider> encounterProviders = new LinkedHashSet<>();
 	
 	// Constructors
 	
@@ -156,7 +154,7 @@ public class Encounter extends BaseOpenmrsData {
 			for (Obs o : this.obs) {
 				ret.addAll(getObsLeaves(o));
 			}
-			// this should be all thats needed unless the encounter has been built by hand
+			// this should be all that is needed unless the encounter has been built by hand
 			//if (o.isVoided() == false && o.isObsGrouping() == false)
 			//	ret.add(o);
 		}
@@ -172,11 +170,11 @@ public class Encounter extends BaseOpenmrsData {
 	 * @return list of leaf obs
 	 */
 	private List<Obs> getObsLeaves(Obs obsParent) {
-		List<Obs> leaves = new ArrayList<Obs>();
+		List<Obs> leaves = new ArrayList<>();
 		
 		if (obsParent.hasGroupMembers()) {
 			for (Obs child : obsParent.getGroupMembers()) {
-				if (!child.isVoided()) {
+				if (!child.getVoided()) {
 					if (!child.isObsGrouping()) {
 						leaves.add(child);
 					} else {
@@ -185,7 +183,7 @@ public class Encounter extends BaseOpenmrsData {
 					}
 				}
 			}
-		} else if (!obsParent.isVoided()) {
+		} else if (!obsParent.getVoided()) {
 			leaves.add(obsParent);
 		}
 		
@@ -212,13 +210,9 @@ public class Encounter extends BaseOpenmrsData {
 		Set<Obs> ret = new LinkedHashSet<>();
 		
 		if (this.obs != null) {
-			for (Obs o : this.obs) {
-				if (includeVoided) {
-					ret.add(o);
-				} else if (!o.isVoided()) {
-					ret.add(o);
-				}
-			}
+			ret = this.obs.stream().
+					filter(o -> includeVoided || !o.getVoided())
+					.collect(Collectors.toSet());
 		}
 		return ret;
 	}
@@ -246,13 +240,10 @@ public class Encounter extends BaseOpenmrsData {
 	 * @should get both child and parent obs after removing child from parent grouping
 	 */
 	public Set<Obs> getObsAtTopLevel(boolean includeVoided) {
-		Set<Obs> ret = new LinkedHashSet<>();
-		for (Obs o : getAllObs(includeVoided)) {
-			if (o.getObsGroup() == null) {
-				ret.add(o);
-			}
-		}
-		return ret;
+	
+		return getAllObs(includeVoided).stream()
+				.filter(o -> o.getObsGroup() == null)
+				.collect(Collectors.toCollection(LinkedHashSet::new));
 	}
 	
 	/**
@@ -284,7 +275,7 @@ public class Encounter extends BaseOpenmrsData {
 			//Propagate some attributes to the obs and any groupMembers
 			
 			// a Deque is a two-ended queue, that lets us add to the end, and fetch from the beginning
-			Deque<Obs> obsToUpdate = new ArrayDeque<Obs>();
+			Deque<Obs> obsToUpdate = new ArrayDeque<>();
 			obsToUpdate.add(observation);
 			
 			//prevent infinite recursion if an obs is its own group member
@@ -302,7 +293,7 @@ public class Encounter extends BaseOpenmrsData {
 				o.setEncounter(this);
 				
 				//if the attribute was already set, preserve it
-				//if not, inherit the values sfrom the encounter
+				//if not, inherit the values from the encounter
 				if (o.getObsDatetime() == null) {
 					o.setObsDatetime(getEncounterDatetime());
 				}
@@ -341,7 +332,7 @@ public class Encounter extends BaseOpenmrsData {
 	 */
 	public Set<Order> getOrders() {
 		if (orders == null) {
-			orders = new LinkedHashSet<Order>();
+			orders = new LinkedHashSet<>();
 		}
 		return orders;
 	}
@@ -396,7 +387,6 @@ public class Encounter extends BaseOpenmrsData {
 	 */
 	public void setPatient(Patient patient) {
 		this.patient = patient;
-		this.patientId = patient.getPersonId();
 	}
 	
 	/**
@@ -437,16 +427,12 @@ public class Encounter extends BaseOpenmrsData {
      * @see #getEncounterProviders()
      */
     public Set<EncounterProvider> getActiveEncounterProviders() {
-        Set<EncounterProvider> activeEncounterProviders = new LinkedHashSet<EncounterProvider>();
+        Set<EncounterProvider> activeProviders = new LinkedHashSet<>();
         Set<EncounterProvider> providers = getEncounterProviders();
-        if (providers != null && providers.size() > 0) {
-            for (EncounterProvider provider : providers) {
-                if (provider.isVoided() == false) {
-                    activeEncounterProviders.add(provider);
-                }
-            }
+        if (providers != null && !providers.isEmpty()) {
+        	activeProviders = providers.stream().filter(p -> !p.getVoided()).collect(Collectors.toSet());
         }
-        return activeEncounterProviders;
+        return activeProviders;
     }
 	
 	/**
@@ -485,6 +471,7 @@ public class Encounter extends BaseOpenmrsData {
 	 * @since 1.5
 	 * @see org.openmrs.OpenmrsObject#getId()
 	 */
+	@Override
 	public Integer getId() {
 		
 		return getEncounterId();
@@ -494,6 +481,7 @@ public class Encounter extends BaseOpenmrsData {
 	 * @since 1.5
 	 * @see org.openmrs.OpenmrsObject#setId(java.lang.Integer)
 	 */
+	@Override
 	public void setId(Integer id) {
 		setEncounterId(id);
 		
@@ -542,23 +530,10 @@ public class Encounter extends BaseOpenmrsData {
 	 */
 	public Map<EncounterRole, Set<Provider>> getProvidersByRoles(boolean includeVoided) {
 		
-		Map<EncounterRole, Set<Provider>> providers = new HashMap<EncounterRole, Set<Provider>>();
-		for (EncounterProvider encounterProvider : encounterProviders) {
-			
-			if (!includeVoided && encounterProvider.getVoided()) {
-				continue;
-			}
-			
-			Set<Provider> list = providers.get(encounterProvider.getEncounterRole());
-			if (list == null) {
-				list = new LinkedHashSet<Provider>();
-				providers.put(encounterProvider.getEncounterRole(), list);
-			}
-			
-			list.add(encounterProvider.getProvider());
-		}
+		return encounterProviders.stream()
+				.filter(ep -> includeVoided || !ep.getVoided())
+				.collect(Collectors.groupingBy(EncounterProvider::getEncounterRole, Collectors.mapping(EncounterProvider::getProvider, Collectors.toSet())));
 		
-		return providers;
 	}
 	
 	/**
@@ -587,19 +562,11 @@ public class Encounter extends BaseOpenmrsData {
 	 * @should return empty set for null role
 	 */
 	public Set<Provider> getProvidersByRole(EncounterRole role, boolean includeVoided) {
-		Set<Provider> providers = new LinkedHashSet<Provider>();
 		
-		for (EncounterProvider encounterProvider : encounterProviders) {
-			if (encounterProvider.getEncounterRole().equals(role)) {
-				if (!includeVoided && encounterProvider.getVoided()) {
-					continue;
-				}
-				
-				providers.add(encounterProvider.getProvider());
-			}
-		}
-		
-		return providers;
+		return encounterProviders.stream()
+				.filter(ep -> ep.getEncounterRole().equals(role) && (includeVoided || !ep.getVoided()))
+				.map(ep -> ep.getProvider())
+				.collect(Collectors.toSet());
 	}
 	
 	/**
@@ -615,7 +582,7 @@ public class Encounter extends BaseOpenmrsData {
 	public void addProvider(EncounterRole role, Provider provider) {
 		// first, make sure the provider isn't already there
 		for (EncounterProvider ep : encounterProviders) {
-			if (ep.getEncounterRole().equals(role) && ep.getProvider().equals(provider) && !ep.isVoided()) {
+			if (ep.getEncounterRole().equals(role) && ep.getProvider().equals(provider) && !ep.getVoided()) {
 				return;
 			}
 		}
@@ -649,7 +616,7 @@ public class Encounter extends BaseOpenmrsData {
 					encounterProvider.setVoided(true);
 					encounterProvider.setDateVoided(new Date());
 					encounterProvider.setVoidedBy(Context.getAuthenticatedUser());
-				} else if (!encounterProvider.isVoided()) {
+				} else if (!encounterProvider.getVoided()) {
 					hasProvider = true;
 				}
 			}
@@ -670,7 +637,7 @@ public class Encounter extends BaseOpenmrsData {
 	 */
 	public void removeProvider(EncounterRole role, Provider provider) {
 		for (EncounterProvider encounterProvider : encounterProviders) {
-			if (encounterProvider.getEncounterRole().equals(role) && encounterProvider.getProvider().equals(provider)) {
+			if (encounterProvider.getEncounterRole().equals(role) && encounterProvider.getProvider().equals(provider) && !encounterProvider.getVoided()) {
 				encounterProvider.setVoided(true);
 				encounterProvider.setDateVoided(new Date());
 				encounterProvider.setVoidedBy(Context.getAuthenticatedUser());
@@ -733,7 +700,7 @@ public class Encounter extends BaseOpenmrsData {
 	 * @return list of orderGroups
 	 */
 	public List<OrderGroup> getOrderGroups() {
-		Map<String, OrderGroup> orderGroups = new HashMap<String, OrderGroup>();
+		Map<String, OrderGroup> orderGroups = new HashMap<>();
 		for (Order order : orders) {
 			if (order.getOrderGroup() != null) {
 				if (null == orderGroups.get(order.getOrderGroup().getUuid())) {
@@ -742,7 +709,7 @@ public class Encounter extends BaseOpenmrsData {
 				order.getOrderGroup().addOrder(order, null);
 			}
 		}
-		List<OrderGroup> orderGroupList = new ArrayList<OrderGroup>();
+		List<OrderGroup> orderGroupList = new ArrayList<>();
 		orderGroupList.addAll(orderGroups.values());
 		return orderGroupList;
 	}
@@ -754,12 +721,8 @@ public class Encounter extends BaseOpenmrsData {
 	 * @return list of orders not having orderGroups
 	 */
 	public List<Order> getOrdersWithoutOrderGroups() {
-		List<Order> orderListWithoutOrderGroups = new ArrayList<Order>();
-		for (Order order : orders) {
-			if (order.getOrderGroup() == null) {
-				orderListWithoutOrderGroups.add(order);
-			}
-		}
-		return orderListWithoutOrderGroups;
+		return orders.stream()
+				.filter(o -> o.getOrderGroup() == null)
+				.collect(Collectors.toList());
 	}
 }
